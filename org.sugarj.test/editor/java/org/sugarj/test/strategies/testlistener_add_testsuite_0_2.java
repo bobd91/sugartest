@@ -36,8 +36,8 @@ public class testlistener_add_testsuite_0_2 extends Strategy {
 		return current;
 	}
 	
-	// Filename includes project path
+	// Remove project path prefix and .sugt suffix from filename
 	private static String suitename(String projectpath, String filename) {
-	  return filename.substring(projectpath.length() + 1);
+	  return filename.substring(projectpath.length() + 1, filename.length() - 5);
 	}
 }
