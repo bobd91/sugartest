@@ -1,0 +1,201 @@
+module check-builders
+
+imports
+  libstratego-lib
+  libstratego-aterm
+  libstratego-gpp
+  include/SugarTest
+  lib/editor-common.generated
+  aterm-eq
+  sugartest
+  check
+  check-resolve
+  ast-compare
+
+overlays
+  
+  // OVERRIDE_INPUT(s) = Prim("\"SSL_EXT_overrideinput\"", [NoAnnoList(Str(s))])
+
+rules
+
+  check-expectation(|ast, selections, messages) :
+    c@Build(builder, arg, expected) ->
+    <check-builder(|ast, selections, messages, c)> (builder, arg, expected)
+
+  check-expectation(|ast, selections, messages) :
+    c@Run(builder, arg, expected) ->
+    <check-builder(|ast, selections, messages, c)> (builder, arg, expected)
+
+  check-expectation(|ast, selections, messages) :
+    c@Refactor(builder, arg, expected) ->
+    <check-refactoring(|ast, selections, messages, c)> (builder, arg, expected)
+  
+  check-builder(|ast, selections, messages, condition):
+    (builder, arg, expected) -> error
+    with
+      selected := <resolve-selection(|selections) <+ LastAnalyzedAst> Numbered("1");
+      input    := <get-service-input-term> selected;
+      /* Not sure what to do about OVERRIDE_INPUT
+      if !arg => Argument(arg') then
+        // Store builder argument
+        plugin-strategy-evaluate(id |<Language>, OVERRIDE_INPUT(arg'))
+      end;
+      */
+      if !condition => Run(_, _, _) then
+        output := <execute-service(|selected); not(Fails())> builder
+      <+
+        output := <execute-service(|input)> builder
+      else
+        output := <execute-service(|input)> builder
+      end
+    where
+      error := <check-builder> (output, input, expected, condition)
+
+  check-refactoring(|ast, selections, messages, condition):
+    (builder, arg, expected) -> error
+    where
+      (semnodes, _, options) := <spt-find-refactoring-description> builder
+    with
+      selected := <resolve-selection(|selections) <+ !ast> Numbered("1"); 
+      selected' := <repeat(\_#([arg]) -> arg\)> selected; //Var(Id(x)) start looking for matching nodes from x
+      user-input := <try(?Argument(<id>)); try(trim-chars(?'"'))> arg;
+      if  
+        input    := <get-service-input-term-refactoring> (selected', semnodes, options, user-input)
+      then 
+      	output := <execute-service(|input)> builder
+      else 
+      	input := None();
+      	output := Error("Selection is not matched with expected sort or constructor")
+      end
+    where
+      error := <check-builder> (output, input, expected, condition)
+  
+  check-refactoring(|ast, selections, messages, condition):
+    (builder, arg, expected) -> $[Undeclared refactoring: [builder]]
+    where
+      not(<spt-find-refactoring-description> builder)
+	
+  check-builder:
+	(output, input, expected, condition) -> error
+    where 
+      switch !output
+        case ?Some(output'):
+          with(result := <fetch-builder-result(|input, output')> condition);
+          error       := <check-builder-expectation(|result)> expected
+        case ?Error(m): 
+          if <not(is-expected-failure)> (condition, expected) then
+            error := $[Unexpected error: [m]]; say(!m)
+          end
+        case ?Fail(m): 
+          error  := $[Unexpected error: [m]]; say(!m)
+        otherwise: with(fail)
+      end
+  
+  is-expected-failure:
+  	(condition, expected) -> (condition, expected)
+  	where
+  	  !condition => Fails() <+ 
+  	  !expected => Fails() <+
+  	  <?(Fails(),_)> expected
+  
+  fetch-builder-result(|input, output):
+    Run(_, _, _) -> result
+    with
+      !output => (<is-string>, result) // remove filename
+    <+
+      !output => result
+  
+  fetch-builder-result(|input, output):
+    Build(_, _, _) -> result
+    with
+      !output => (<is-string>, result) // remove filename
+    <+
+      !output => result
+  
+  fetch-builder-result(|input, output):
+    Refactor(_, _, _) -> refactor-result
+    with
+      <?([(_,result)], fatals, errors, warnings)> output;
+      refactor-result := (result, fatals, errors, warnings)
+    <+
+      !output => refactor-result
+   
+  check-builder-expectation(|result) :
+    Fails() -> $[Builder was expected to fail, but produced: [<write-to-html-string> result]]
+   
+  check-builder-expectation(|result) :
+    File(_) -> $[Builder comparison to file is not implemented] // TODO
+   
+  check-builder-expectation(|result) :
+    Fragment(_{^[ast | _]}) -> $[Unexpected output:
+                                <b><pre>[result']</pre></b>]
+    where
+      not(<eq> (ast, result) <+ <equal-in-desugared-form> (ast, result)) 
+    with
+      result' := <spt-pp-target-string> result
+    <+
+      result' := $[[<write-to-html-string> result] instead of [<write-to-html-string> ast]]
+  
+  equal-in-desugared-form:
+  	(ast, result) -> (ast, result)
+  	where
+      input-observer := (ast, <InputFile>, <project-path>);
+      ast-desugared := <plugin-strategy-invoke(|<TargetLanguage>, <spt-get-observer>); try(?Some(<Fst>))> input-observer;
+      <compare-desugared-asts> (ast-desugared, result) 
+  		
+  check-builder-expectation(|result) :
+    ATerm(p) -> $[Unexpected output:
+                  <b><pre>[result-string]</pre></b>]
+    where
+      if <is-string> result; !p => fun(quoted(p')) then
+        not(<is-string-equal-modulo-whitespace> (result, <un-double-quote> p'));
+        result-string := <is-string <+ write-to-html-string> result
+      else
+        result' := <explode-aterm> result;
+        not(<aterm-eq> (result', p));
+        result-string := <pp-aterm-box; box2text-string(|60)> result
+      end
+  
+  is-string-equal-modulo-whitespace:
+    (a, b) -> (a, b)
+    with
+      a' := <strip-whitespace> a;
+      b' := <strip-whitespace> b
+    where
+      <eq> (a', b')
+  
+  strip-whitespace =
+    string-replace(|" ", "");
+    string-replace(|"\n", "");
+    string-replace(|"\r", "");
+    string-replace(|"\t", "")
+
+  check-builder-expectation(|result) :
+  	(expected-ast, expected-problems) -> <separate-by(|"; "); concat-strings> refactor-errors
+  	where
+  	  <?(result-ast, fatals, errors, warnings)> result;
+  	  refactor-errors := <filter(check-refactor-expectation(|result))> [expected-ast|expected-problems];
+  	  <not(?[])> refactor-errors
+  		
+  check-refactor-expectation(|result) :
+    expected-ast -> <check-builder-expectation(|result-ast)> expected-ast
+    where
+      <?(result-ast, _, _, _)> result
+ 
+  check-refactor-expectation(|result) :
+    Warnings(n) -> $[[n] refactor warning(s) expected: [<write-to-html-string> warnings]]
+    where
+      <?(_, _, _, warnings)> result
+    ; not(<eq> (<length> warnings, <string-to-int> n))
+
+  check-refactor-expectation(|result) :
+    Errors(n) -> $[[n] refactor error(s) expected: [<write-to-html-string> errors]]
+    where
+      <?(_, _, errors, _)> result
+    ; not(<eq> (<length> errors, <string-to-int> n))
+
+  check-refactor-expectation(|result) :
+    Fatals(n) -> $[[n] refactor fatal-error(s) expected: [<write-to-html-string> fatals]]
+    where
+      <?(_, fatals, _, _)> result
+    ; not(<eq> (<length> fatals, <string-to-int> n))

@@ -1,0 +1,174 @@
+module generate
+
+imports
+  libstratego-lib
+  libstratego-gpp
+  libstratego-sglr
+  libstratego-aterm
+  include/SugarTest
+  lib/editor-common.generated
+  sugartest
+  aterm-eq
+  file-resolving
+
+rules
+  to-java(|name):
+    testsuite(header*, test*) ->
+       ($[editor/java/tests/[name].java], 
+        $[package tests;
+
+          import junit.framework.TestCase;
+          
+          import org.junit.Before;
+          import org.junit.Test;
+          import org.spoofax.interpreter.core.InterpreterException;
+          import org.spoofax.interpreter.terms.IStrategoTerm;
+          import org.strategoxt.HybridInterpreter;
+          import org.strategoxt.imp.runtime.Environment;
+          import org.strategoxt.imp.runtime.dynamicloading.Descriptor;
+          import org.strategoxt.imp.runtime.parser.JSGLRI;
+          import org.spoofax.jsglr.SGLRException;
+          import org.strategoxt.imp.runtime.services.StrategoObserver;
+          import org.strategoxt.imp.testing.test.[language]ParseController;
+          
+          @SuppressWarnings("unused")
+          public class [name] extends TestCase {
+          
+              private final JSGLRI parser;
+              
+              private final HybridInterpreter stratego;
+              
+              public ASD() throws Exception {
+                Descriptor descriptor = [language]ParseController.getDescriptor();
+                parser = new JSGLRI(Environment.getParseTableProvider(descriptor.getLanguage()), [start']);
+                StrategoObserver observer = descriptor.createService(StrategoObserver.class, null);
+                observer.getLock().lock();
+                try {
+                    stratego = observer.getRuntime();
+                } finally {
+                    observer.getLock().unlock();
+                }
+              }
+              [test'*]
+           }
+        ])
+    with 
+      if <one(?TopSort(s))> header* then
+        start' := $["[s]"]
+      else
+        start' := $[null]
+      end;
+      language := <one(?Language(s))> header*;
+      test'*   := <map-with-index(try(desugar-test) ; test-to-java)> test*
+
+    desugar-test = fail
+//  desugar-test :
+//    Test(i, r) -> Test(" ", description(""), i, r)
+
+  escape-string = 
+    string-replace(|"\\","\\\\")
+  ; string-replace(|"\n","\\n")
+  ; string-replace(|"\"","\\\"") 
+
+  test-to-java :
+    (i, tst) ->  
+      $[
+          @Test
+          public void test[i]() throws Exception {
+              [stmt*]
+          }  
+      ]  
+      with
+          stmt* := <test-to-java-stmts>tst
+
+  to-java-test-decl :
+    Test(_, description(d), Input(_,s,_,_), _) -> 
+      $[  String input = "[s']"; 
+          String description = "[d']";
+          IStrategoTerm ast = parser.parse(input, description);
+      ]
+      with 
+        d' := <escape-string>d
+      ; s' := <escape-string> <input-to-string> s    
+
+  input-to-string =
+    with(fail|"Not implemented!")
+
+  to-java-test-decl :
+    Test(_, description(d), file(f), _) -> 
+      $[
+          IStrategoTerm input = read_text_file_0_0.instance.invoke(context, context.getFactory().makeString("[f']")); 
+          String description = "[d']";
+          IStrategoTerm ast = parser.parse(input, description));
+      ]
+      with 
+        d' := <escape-string>d
+      ; f' := <resolve-path(|<current-path>) ; escape-string>f
+        
+  test-to-java-stmts:
+    Test(_, _, _, [SuccessParsing()]) ->
+      $[  [<to-java-test-decl>]
+          assertNotNull(description, ast); 
+       ]  
+        
+  test-to-java-stmts:
+    Test(_, _, _, [FailsParsing()]) ->
+      $[  try {
+              [<to-java-test-decl>]
+              fail(description);
+          } catch (SGLRException e) {
+              // failure expected
+          } 
+       ]
+
+  test-to-java-stmts: // TODO
+    Test(_, _, _, [Fails()]) ->
+      $[  try {
+              [<to-java-test-decl>]
+              TODO: do semantic check on resulting 'ast'
+          } catch (SGLRException e) {
+              // failure expected
+          } 
+       ]
+  
+  test-to-java-stmts:
+    Test(_, _, _, [file(f)]) ->
+      $[ 
+          [<to-java-test-decl>]
+          IStrategoTerm expected = null;
+          expected = context.getFactory().parseFromFile("[f']");
+          assertEquals(description, parser.parse(input, description), expected); 
+      ]  
+      with 
+        f' := <resolve-path(|<current-path>) ; escape-string>f
+
+  test-to-java-stmts:
+    Test(_, _, _, [pattern(p)]) ->
+      $[
+          [<to-java-test-decl>]
+          
+          assertNotNull(description, aterm_eq_0_1.instance.invoke(context, ast, context.getFactory().makeString("[p']")));
+       ]  
+      with p' := <write-to-html-string ; escape-string>p
+        
+strategies
+  
+  generate-ast-file = 
+    if ?(file(f), position, ast, path, project-path) then
+      abs := <resolve-path(|path)>f
+    ; if not(file-exists) then
+        if <oncetd(?Test(_, _, _, _) ; oncetd(?file(f)); ?Test(_, _, Input(_,s,_,_), _))>ast then
+          result := <spt-parse-string> <input-to-string> s 
+        else
+          fatal-err-msg(|$[Could not find a string input for generating AST.])  
+        end 
+      else
+        fatal-err-msg(|$[File [f] already exists.])
+      end
+    else
+      fatal-err-msg(|$[Unable to determine which file to generate.])
+    end 
+  ; <queue-analysis> path  
+  ; !(abs, result)
+    
+    

@@ -1,0 +1,16 @@
+module SugarTest.main
+
+imports SugarTest-Builders SugarTest-Refactorings SugarTest-Colorer SugarTest-Completions SugarTest-Folding SugarTest-Outliner SugarTest-References SugarTest-Syntax
+
+language General properties
+                  
+  name          : SugarTest
+  id            : org.sugarj.test
+  extends       : Root
+                  
+  description   : "Spoofax/IMP-generated editor for the SugarTest language"
+  url           : http://strategoxt.org
+                  
+  extensions    : sugt
+  table         : include/SugarTest.tbl
+  start symbols : TestSuite

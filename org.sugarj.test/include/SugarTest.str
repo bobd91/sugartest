@@ -1,0 +1,238 @@
+module SugarTest
+
+signature
+  constructors
+                              : BracketCharacter -> BracketLiteral_BracketCharacter0
+                              : BracketLiteral -> BracketLiteral_BracketCharacter0
+                              : String -> PathName
+    description               : EOLString -> Description
+                              : String -> CBracket4
+                              : String -> CBracket3
+                              : String -> CBracket2
+                              : String -> EOLString
+    QuotePart                 : String -> StringPart4
+    QuotePart                 : String -> StringPart3
+    QuotePart                 : String -> StringPart2
+    MarkedPlaceholder         : String * String * String -> MarkedPart4
+    Marked                    : String * StringPart4 * String -> MarkedPart4
+    MarkedPlaceholder         : String * String * String -> MarkedPart3
+    Marked                    : String * StringPart3 * String -> MarkedPart3
+    MarkedPlaceholder         : String * String * String -> MarkedPart2
+    Marked                    : String * StringPart2 * String -> MarkedPart2
+    More                      : MarkedPart4 * StringPart4 * TailParts4 -> TailParts4
+    Done                      : TailParts4
+    More                      : MarkedPart3 * StringPart3 * TailParts3 -> TailParts3
+    Done                      : TailParts3
+    More                      : MarkedPart2 * StringPart2 * TailParts2 -> TailParts2
+    Done                      : TailParts2
+    Output                    : String * StringPart4 * TailParts4 * CBracket4 -> Output
+    Output                    : String * StringPart3 * TailParts3 * CBracket3 -> Output
+    Output                    : String * StringPart2 * TailParts2 * CBracket2 -> Output
+    Conc                      : ListStarOfATerm0 * ListPlusOfATerm0 -> ListPlusOfATerm0
+    Conc                      : ListPlusOfATerm0 * ListStarOfATerm0 -> ListPlusOfATerm0
+    Conc                      : ListPlusOfATerm0 * ListPlusOfATerm0 -> ListPlusOfATerm0
+    Cons                      : ATerm * ListStarOfATerm0 -> ListPlusOfATerm0
+    wildcardvar               : ListPlusOfATerm0
+    Unnumbered                : OptNumbered
+                              : Numbered -> OptNumbered
+    Numbered                  : INT -> Numbered
+    Fails                     : OptPattern
+    ATerm                     : ATerm -> OptPattern
+    Fragment                  : Output -> OptPattern
+    File                      : PathName -> OptPattern
+    wildcard                  : OptPattern
+    Argument                  : STRING -> OptArgument
+    None                      : OptArgument
+    Input                     : String * StringPart4 * TailParts4 * String -> Input
+    Input                     : String * StringPart3 * TailParts3 * String -> Input
+    Input                     : String * StringPart2 * TailParts2 * String -> Input
+    file                      : PathName -> Input
+    CompletionHelper          : ID -> Result
+                              : RegexExp -> Result
+    Refactor                  : ID * OptArgument * OptPattern -> Result
+    Run                       : ID * OptArgument * OptPattern -> Result
+    Build                     : ID * OptArgument * OptPattern -> Result
+    CompleteTo                : OptNumbered * STRING -> Result
+    Complete                  : OptNumbered -> Result
+    ResolveTo                 : Numbered * Numbered -> Result
+    Resolve                   : OptNumbered -> Result
+    Fatals                    : INT -> Result
+    Fatal                     : INT -> Result
+    Notes                     : INT -> Result
+    Note                      : INT -> Result
+    Warnings                  : INT -> Result
+    Warning                   : INT -> Result
+    Errors                    : INT -> Result
+    Error                     : INT -> Result
+    SuccessParsing            : Result
+    FailsParsing              : Result
+    ParseOutput               : Output -> Result
+    pattern                   : ATerm -> Result
+    file                      : PathName -> Result
+    VarDecl                   : ID * ATerm -> VarDecl
+    TestEmpty                 : String * Description -> Test
+    Test                      : String * Description * Input * List(Result) -> Test
+    TargetSetupEmpty          : String * Description -> Test
+    TargetSetup               : String * Description * Output -> Test
+    SetupEmpty                : String * Description -> Test
+    Setup                     : String * Description * Input -> Test
+                              : VarDecl -> TestDecl
+                              : Test -> TestDecl
+    TargetLanguage            : ID -> Header
+    TargetTopSort             : ID -> Header
+    CompletionDisable         : Header
+    Language                  : ID -> Header
+    TopSort                   : ID -> Header
+    Package                   : ID -> Header
+    Name                      : ID -> Header
+    CompletionHelper          : ID -> TestSuite
+    testsuite                 : List(Header) * List(TestDecl) -> TestSuite
+    RegexId                   : RegexID -> RegexId
+                              : String -> RegexID
+                              : String -> ControlValue
+                              : String -> FourHexValue
+                              : String -> TwoHexValue
+                              : String -> OctalValue
+                              : String -> BackReference
+                              : String -> Integer
+    DoubleQuote               : QuotablePatternSymbol
+                              : String -> QuotablePatternSymbol
+    Quoted                    : QuotablePatternSymbol -> AtomCharacter
+    Space                     : AtomCharacter
+    BackReference             : BackReference -> AtomCharacter
+    EndInputFinalBoundry      : AtomCharacter
+    EndInputBoundry           : AtomCharacter
+    PrevMatchEndBoundry       : AtomCharacter
+    InputBeginBoundry         : AtomCharacter
+    NonWordBoundry            : AtomCharacter
+    WordBoundry               : AtomCharacter
+    ControlCharacter          : ControlValue -> AtomCharacter
+    NonDigitChar              : AtomCharacter
+    DigitChar                 : AtomCharacter
+    NonWhiteSpaceChar         : AtomCharacter
+    WhiteSpaceChar            : AtomCharacter
+    NonWordChar               : AtomCharacter
+    WordChar                  : AtomCharacter
+    Escape                    : AtomCharacter
+    Alarm                     : AtomCharacter
+    Formfeed                  : AtomCharacter
+    Return                    : AtomCharacter
+    Newline                   : AtomCharacter
+    Tab                       : AtomCharacter
+    DecHexChar                : FourHexValue -> AtomCharacter
+    HexHexChar                : TwoHexValue -> AtomCharacter
+    OctalChar                 : OctalValue -> AtomCharacter
+    DoubleQuote               : AtomCharacter
+    Quoted                    : QuotablePatternSymbol -> BracketCharacter
+    Space                     : BracketCharacter
+    BackReference             : BackReference -> BracketCharacter
+    EndInputFinalBoundry      : BracketCharacter
+    EndInputBoundry           : BracketCharacter
+    PrevMatchEndBoundry       : BracketCharacter
+    InputBeginBoundry         : BracketCharacter
+    NonWordBoundry            : BracketCharacter
+    WordBoundry               : BracketCharacter
+    ControlCharacter          : ControlValue -> BracketCharacter
+    NonDigitChar              : BracketCharacter
+    DigitChar                 : BracketCharacter
+    NonWhiteSpaceChar         : BracketCharacter
+    WhiteSpaceChar            : BracketCharacter
+    NonWordChar               : BracketCharacter
+    WordChar                  : BracketCharacter
+    Escape                    : BracketCharacter
+    Alarm                     : BracketCharacter
+    Formfeed                  : BracketCharacter
+    Return                    : BracketCharacter
+    Newline                   : BracketCharacter
+    Tab                       : BracketCharacter
+    DecHexChar                : FourHexValue -> BracketCharacter
+    HexHexChar                : TwoHexValue -> BracketCharacter
+    OctalChar                 : OctalValue -> BracketCharacter
+    DoubleQuote               : BracketCharacter
+                              : String -> AllChars
+                              : String -> AtomLiteral
+                              : String -> BracketLiteral
+    BracketCharacter          : BracketCharacter -> BracketItem
+    BracketLiteral            : BracketLiteral -> BracketItem
+    Union                     : CharacterClass -> BracketItem
+    Range                     : BracketLiteral_BracketCharacter0 * BracketLiteral_BracketCharacter0 -> BracketItem
+    NegatedBracketList        : List(BracketItem) -> CharacterClass
+    BracketList               : List(BracketItem) -> CharacterClass
+    QuotedAtom                : AllChars -> Atom
+    AtomCharacter             : AtomCharacter -> Atom
+    AtomLiteral               : AtomLiteral -> Atom
+    CharacterClass            : CharacterClass -> Atom
+    LineEnd                   : Atom
+    LineStart                 : Atom
+    SingleCharacter           : Atom
+    Empty                     : Atom
+    RegexCapture              : Pattern * RegexId -> Atom
+    PythonCapture             : RegexId * Pattern -> Atom
+    NegativeLookbehind        : Pattern -> Atom
+    PositiveLookbehind        : Pattern -> Atom
+    NegativeLookahead         : Pattern -> Atom
+    PositiveLookahead         : Pattern -> Atom
+    NonCapture                : Pattern -> Atom
+    Capture                   : Pattern -> Atom
+    PossessiveOneOrMore       : Quantifier
+    PossessiveZeroOrMore      : Quantifier
+    PossessiveOnceOrNot       : Quantifier
+    PossessiveLowerUpperBound : Integer * Integer -> Quantifier
+    PossessiveLowerBound      : Integer -> Quantifier
+    PossessiveExactBound      : Integer -> Quantifier
+    ReluctantOneOrMore        : Quantifier
+    ReluctantZeroOrMore       : Quantifier
+    ReluctantOnceOrNot        : Quantifier
+    ReluctantLowerUpperBound  : Integer * Integer -> Quantifier
+    ReluctantLowerBound       : Integer -> Quantifier
+    ReluctantExactBound       : Integer -> Quantifier
+    GreedyOneOrMore           : Quantifier
+    GreedyZeroOrMore          : Quantifier
+    GreedyOnceOrNot           : Quantifier
+    GreedyLowerUpperBound     : Integer * Integer -> Quantifier
+    GreedyLowerBound          : Integer -> Quantifier
+    GreedyExactBound          : Integer -> Quantifier
+    QuantifiedAtom            : Atom * Quantifier -> Piece
+    SingleAtom                : Atom -> Piece
+    Pieces                    : List(Piece) -> Branche
+    TupleBranch               : Pattern * Pattern -> Pattern
+    SingleBranch              : Branche -> Pattern
+    RegexPattern              : Pattern -> RegexExp
+    default                   : ListPlusOfATerm0 -> Annotation
+    wildcard                  : ATerm
+    annotated                 : ATerm * Annotation -> ATerm
+    list                      : ListStarOfATerm0 -> ATerm
+    placeholder               : ATerm -> ATerm
+    appl                      : NoAFun * ListStarOfATerm0 -> ATerm
+    appl                      : AFun * ListStarOfATerm0 -> ATerm
+    fun                       : AFun -> ATerm
+    real                      : RealCon -> ATerm
+    int                       : IntCon -> ATerm
+    unquoted                  : IdCon -> AFun
+    quoted                    : StrCon -> AFun
+                              : String -> NoAFun
+                              : String -> IdCon
+                              : String -> StrCon
+    real-con                  : IntCon * NatCon * OptExp -> RealCon
+    absent                    : OptExp
+    present                   : IntCon -> OptExp
+    negative                  : NatCon -> IntCon
+    positive                  : NatCon -> IntCon
+    natural                   : NatCon -> IntCon
+                              : String -> NatCon
+                              : String -> STRING
+                              : String -> INT
+                              : String -> ID
+
+
+signature
+  constructors
+    Some : a -> Option(a)
+    None : Option(a)
+
+
+signature
+  constructors
+    Cons : a * List(a) -> List(a)
+    Nil  : List(a)
+    Conc : List(a) * List(a) -> List(a)

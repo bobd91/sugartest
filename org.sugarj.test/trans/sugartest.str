@@ -1,0 +1,271 @@
+module sugartest
+
+imports
+  libstratego-lib
+  libstratego-gpp
+  libstratego-aterm
+  libstratego-sglr
+  include/SugarTest
+  lib/editor-common.generated
+  analysis
+  check
+  generate
+  file-resolving
+  test-runner
+rules
+    
+  editor-analyze:
+    (ast, path, project-path) ->
+    (ast', errors', warnings', notes')
+    with
+      editor-init;
+      ast' := <topdown(repeat(spt-desugar)); alltd(spt-desugar-refactoring-conditions)> ast
+    with
+      (errors', warnings', notes') := <report-invalid-language> ast'
+    <+
+      (errors', warnings', notes') := <report-invalid-target-language> ast'
+    <+
+      scope-paths(
+        <chdir> project-path;
+        <record-all-sdfs> ".";
+        rules(
+          InputFile := path
+          Language  := "SugarJ"
+          TargetLanguage := "SugarJ"
+        );
+        errors    := <collect-all(check-error, conc)> ast';
+        warnings  := <collect-all(check-warning, conc)> ast';
+        notes     := <collect-all(check-note, conc)> ast';
+        errors'   := <flatten-list> [errors, <bagof-GrabbedErrors>];
+        warnings' := <flatten-list> [warnings, <bagof-GrabbedWarnings>];
+        notes'    := <flatten-list> [notes, <bagof-GrabbedNotes>];
+        if not([] := errors) then
+            rules ( HasErrors := () )
+        end
+      | path, project-path
+      )
+
+  report-invalid-language:
+    testsuite(h*, _) -> ([error], [], [])
+    where
+      not(get-language);
+      error := (h*, $[Specify a language to be tested e.g., language [
+      	                <spt-get-default-language <+ !""> ]])
+    <+
+      language := <get-language>;
+      not(spt-exists-language(|language));
+      error := (language, $[Language [language] not defined or not loaded])
+
+  report-invalid-target-language:
+    testsuite(h*, _) -> ([error], [], [])
+    where
+      language := <get-target-language>;
+      not(spt-exists-language(|language));
+      error := (language, $[Language [language] not defined or not loaded])
+
+  get-language:
+    testsuite(header*, _) -> language
+    where
+      <one(?Language(language))> header*
+
+  get-target-language:
+    testsuite(header*, _) -> language
+    where
+      <one(?TargetLanguage(language))> header*
+
+  generate-java:
+    (selected, position, ast, path, project-path) -> result
+    with
+      scope-paths( result := <to-java(|<base-filename> path)> selected | path, project-path)
+  
+  generate-aterm:
+    (selected, position, ast, path, project-path) -> (filename, selected)
+    with
+      filename := <guarantee-extension(|"aterm")> path
+
+  editor-hover:
+    (QuotePart(_), position, ast, _, _) -> hover
+    where
+      _{ast2} := <parent-at-position(|position)> ast;
+      hover := <spt-pp-aterm ; hover-input-string>ast2
+
+  hover-input-string =
+  	if ?error(_, _) then
+      extract-parse-error
+    else 
+      !$[The input string currently result in the following AST:<br />
+         <br />
+         <b>
+           <pre>
+             [<id>]
+           </pre>
+         </b>
+        ]
+    end 
+
+  spt-pp-aterm =
+    pp-aterm-box ; box2text-string(|80)
+    
+  //external input-dialog(|title, message, initial)
+
+strategies
+
+  write-to-html-string =
+    write-to-string;
+    string-replace(|"&", "&amp;");
+    string-replace(|"<", "&lt;");
+    string-replace(|">", "&gt;")
+
+strategies
+  
+  editor-complete:
+    (CompletionHelper(_), _, _, path, _) ->
+    [[$(module (<base-filename; remove-extension> path) 
+       
+        language (<spt-get-default-language <+ !"Language">)
+       
+        test ), " ", "description", " ", $([[
+        ), "  ", "test", $(
+       ]]), " "
+    ]]
+	
+  editor-complete:
+    (Language(t), _, _, _, _) -> [<spt-get-default-language>]
+  
+  editor-complete:
+    (construct, position, ast, path, project-path) -> proposals
+    where
+      ?input-tuple;
+      not(<origin-line> ast => 1);
+      language := <origin-language> ast;
+      {|Language:
+        rules(
+          InputFile := path
+          Language := "SugarJ" 
+        );
+        completers := <spt-get-content-proposers>;
+        results   := <map(execute-service(|input-tuple))> completers;
+        proposals := <getfirst(?Some(<id>))> results
+      |}
+    with
+      spt-index-clear-file
+  
+  editor-resolve:
+    (construct, position, ast, path, project-path) -> proposals
+    where
+      ?input-tuple;
+      language := <origin-language> ast;
+       {|Language:
+        rules(
+          InputFile := path
+          Language := "SugarJ" 
+        );
+        resolvers := <spt-get-reference-resolvers>;
+        results   := <map(execute-service(|input-tuple))> resolvers;
+        proposals := <getfirst(?Some(<id>))> results
+      |}
+    with
+      spt-index-clear-file
+      
+  origin-language =
+  	prim("SSL_EXT_origin_language", <id>)
+
+strategies
+  
+  external plugin-get-property-values(|language)
+  
+  plugin-get-string-property:
+    property -> value
+    where
+      plugin-get-property-values(|<Language>) => [property#([value|_]) | _]
+      
+  spt-index-clear-file =
+    try(<plugin-strategy-invoke(|<Language>, "index-clear-file")> <InputFile>)
+	
+  spt-get-observer =
+    <plugin-get-string-property> "SemanticObserver"
+
+  spt-get-reference-resolvers =
+    <plugin-get-property-values(|<Language>)> "ReferenceRule";
+    map(?"ReferenceRule"#([_, <id>]))
+
+  spt-get-content-proposers =
+    <plugin-get-property-values(|<Language>)> "CompletionProposer";
+    map(?"CompletionProposer"#([_, <id>])) //TODO: first term (semantic nodes) can be relevant
+
+  spt-get-hover-helpers =
+    <plugin-get-property-values(|<Language>)> "HoverRule";
+    map(?"HoverRule"#([_, <id>]))
+
+  spt-get-builders =
+    <plugin-get-property-values(|<Language>)> "Builder";
+    map(\"Builder"#([_, d, s]) -> (d, s)\)
+
+  spt-get-refactorings =
+    <plugin-get-property-values(|<Language>)> "Refactoring";
+    map(\"Refactoring"#([semnodes, _, strategy, options, _]) -> (semnodes, strategy, options)\)
+    
+  spt-find-refactoring-description:
+  	strategy -> (semnodes, strategy, options)
+  	where
+  	  spt-get-refactorings;
+  	  fetch-elem(?(_, "Strategy"#([strategy]), _)); 
+  	  ?(semnodes, _, options)
+  
+  spt-exists-language(|language) =
+    where(is-sugar-language(|language))
+  
+  spt-get-default-language =
+    <readdir> $[[<project-path>]/include]
+    ; fetch-elem(has-extension(|"esv")) 
+    ; esv := <ReadFromFile>$[./include/[<id>]]
+    ; collect-one(?"LanguageName"#([<id>]))
+
+  spt-get-parsetable =
+  	SPTParseTable
+   <+ <readdir> $[[<project-path>]/include] 
+    ; fetch-elem(has-extension(|"tbl")) 
+    ; pt := <ReadFromFile>$[./include/[<id>]]
+    ; rules( SPTParseTable := pt )    
+  	
+  spt-parse-string =
+    prim("STRSGLR_set_recovery_off");
+    parse-string(
+      id
+    | <spt-get-parsetable>
+    )    
+  
+  // Tries to pretty print an AST, or fails
+  spt-pp-string(|language) =
+    plugin-strategy-invoke(|language, $[pp-[<lower-case> language]-string]);
+    ?Some(<id>)
+
+  spt-pp-string =
+    spt-pp-string(|<Language>)
+
+  spt-pp-target-string =
+    spt-pp-string(|<TargetLanguage>)
+
+  get-service-input-term =
+    get-service-input-term(|<LastAnalyzedAst>)
+
+  get-service-input-term-without-ancestor:
+    term -> (term', position, ast, path, project-path)
+    where
+      (term-with-ancestor, position, ast, path, project-path) := <get-service-input-term>;
+      (term' := <collect-one(origin-equal(|term))> term-with-ancestor
+       <+ term' := term-with-ancestor)
+
+  get-service-input-term-refactoring =
+    get-service-input-term-refactoring(|<LastAnalyzedAst>)
+  
+  execute-service(|node):
+    resolver -> <plugin-strategy-invoke(|<Language>, resolver)> node
+  
+  external get-service-input-term(|analyzed-ast)
+
+  external get-service-input-term-refactoring(|analyzed-ast)
+  
+  external is-sugar-language(|language)
+  
+  external sugar-log(|ast)

@@ -1,0 +1,721 @@
+definition
+module RegExp
+
+exports
+%%d  context-free start-symbols
+%%d    PatternDecl Pattern
+  sorts Pattern PatternDecl Exp
+  context-free syntax
+
+    "/" Pattern "/"            -> RegexExp { cons("RegexPattern") }
+    Branche                    -> Pattern {cons("SingleBranch")}
+    Pattern "|" Pattern        -> Pattern {cons("TupleBranch"), right, prefer}
+
+
+  sorts Branche
+  context-free syntax
+    Piece+                     -> Branche {cons("Pieces")}
+
+  sorts Piece
+  context-free syntax
+    Atom                       -> Piece {cons("SingleAtom")}
+    Atom Quantifier            -> Piece {cons("QuantifiedAtom")}
+
+  sorts Quantifier
+  context-free syntax
+   "{" Integer "}"              -> Quantifier {cons("GreedyExactBound")}
+   "{" Integer "," "}"          -> Quantifier {cons("GreedyLowerBound")}
+   "{" Integer "," Integer "}"  -> Quantifier {cons("GreedyLowerUpperBound")}
+   "?"                          -> Quantifier {cons("GreedyOnceOrNot")}
+   "*"                          -> Quantifier {cons("GreedyZeroOrMore")}
+   "+"                          -> Quantifier {cons("GreedyOneOrMore")}
+   "{" Integer "}?"             -> Quantifier {cons("ReluctantExactBound")}
+   "{" Integer "," "}?"         -> Quantifier {cons("ReluctantLowerBound")}
+   "{" Integer "," Integer "}?" -> Quantifier {cons("ReluctantLowerUpperBound")}
+   "??"                         -> Quantifier {cons("ReluctantOnceOrNot")}
+   "*?"                         -> Quantifier {cons("ReluctantZeroOrMore")}
+   "+?"                         -> Quantifier {cons("ReluctantOneOrMore")}  
+   "{" Integer "}+"             -> Quantifier {cons("PossessiveExactBound")}
+   "{" Integer "," "}+"         -> Quantifier {cons("PossessiveLowerBound")}
+   "{" Integer "," Integer "}+" -> Quantifier {cons("PossessiveLowerUpperBound")}
+   "?+"                         -> Quantifier {cons("PossessiveOnceOrNot")}
+   "*+"                         -> Quantifier {cons("PossessiveZeroOrMore")}
+   "++"                         -> Quantifier {cons("PossessiveOneOrMore")}   
+
+  sorts Atom
+  context-free syntax
+    "("   Pattern ")"          -> Atom {cons("Capture")}
+    "(?:" Pattern ")"          -> Atom {cons("NonCapture")}
+    "(?=" Pattern ")"          -> Atom {cons("PositiveLookahead")}
+    "(?!" Pattern ")"          -> Atom {cons("NegativeLookahead")}
+    "(?<=" Pattern ")"         -> Atom {cons("PositiveLookbehind")}
+    "(?<!" Pattern ")"         -> Atom {cons("NegativeLookbehind")}
+    "(?P<" RegexId ">" Pattern ")"  -> Atom {cons("PythonCapture")}
+    "(" Pattern ")@{" RegexId "}"   -> Atom {cons("RegexCapture")}
+    "()"                       -> Atom {cons("Empty")}
+    "."                        -> Atom {cons("SingleCharacter")}
+    "^"                        -> Atom {cons("LineStart")}
+    "$"                        -> Atom {cons("LineEnd")}
+    CharacterClass             -> Atom {cons("CharacterClass")}
+    AtomLiteral                -> Atom {cons("AtomLiteral")}
+    AtomCharacter              -> Atom {cons("AtomCharacter")}
+    "\\Q" AllChars "\\E"       -> Atom {cons("QuotedAtom")}    
+    
+  sorts CharacterClass BracketItem
+  context-free syntax
+    "[" BracketItem+ "]"       -> CharacterClass {cons("BracketList")}
+    "[^" BracketItem+ "]"      -> CharacterClass {cons("NegatedBracketList")}
+%%d "\\p\{" ClassKeyword "\}"   -> CharacterClass {cons("PredefineClass")}
+%%d "\\P\{" ClassKeyword "\}"   -> CharacterClass {cons("NegatedPredefineClass")}
+   
+
+    (BracketLiteral | BracketCharacter)
+     "-" 
+    (BracketLiteral | BracketCharacter)   -> BracketItem {cons("Range")}
+    CharacterClass                        -> BracketItem {cons("Union")}
+%%d "\&\&" CharacterClass                 -> BracketItem {cons("Intersection")}
+    BracketLiteral                        -> BracketItem {cons("BracketLiteral")}
+    BracketCharacter                      -> BracketItem {cons("BracketCharacter")}
+   
+
+%%
+ %%   Defining characterclasses
+  %% 
+sorts ClassKeyword
+  context-free syntax    
+    "Lower"                    -> ClassKeyword {cons("LowerClass")}
+    "Upper"                    -> ClassKeyword {cons("UpperClass")}
+    "ASCII"                    -> ClassKeyword {cons("ASCIIClass")}
+    "Alpha"                    -> ClassKeyword {cons("AlphaClass")}
+    "Digit"                    -> ClassKeyword {cons("DigitClass")}
+    "Alnum"                    -> ClassKeyword {cons("AlnumClass")}
+    "Punct"                    -> ClassKeyword {cons("PunctClass")}
+    "Graph"                    -> ClassKeyword {cons("GraphClass")}
+    "Print"                    -> ClassKeyword {cons("PrintClass")}
+    "Blank"                    -> ClassKeyword {cons("BlankClass")}
+    "Cntrl"                    -> ClassKeyword {cons("CntrlClass")}
+    "XDigit"                   -> ClassKeyword {cons("XDigitClass")}
+    "Space"                    -> ClassKeyword {cons("WhiteSpace")}
+    "javaLowerCase"            -> ClassKeyword {cons("JavaIsLowerCase")}
+    "javaUpperCase"            -> ClassKeyword {cons("JavaIsLowerCase")}
+    "javaWhitespace"           -> ClassKeyword {cons("JavaIsWhitespace")}
+    "javaMirrored"             -> ClassKeyword {cons("JavaIsMirrored")}
+    "InGreek"                  -> ClassKeyword {cons("GreekBlock")}
+    "Lu"                       -> ClassKeyword {cons("UppercaseLetter")}
+    "Sc"                       -> ClassKeyword {cons("CurrencySymbol")}
+
+%%
+ %%   Defining the Character -> Characters that appear as Atom and in Brackets  
+  %%   
+
+%%  ASCII characters:  
+%%  $*+?.{}()                             %% OnlyBranchSpecial
+%%  &]-                                   %% OnlyClassSpecial
+%%  [^\                                   %% AlwaysSpecial
+%%  !"#%',/:;<=>@_`~                      %% NeverSpecialCharacter
+%%  ABCDEFGHIJKLMNOPQRSTUVWXYZ            %% Character
+%%  abcdefghijklmnopqrstuvwxyz            %% Charater
+%%  0123456789                            %% Charater
+%%  <tab> <newline> <return> <form-feed>  %% SpecialEscapeCharacter
+
+
+  sorts BracketLiteral AtomLiteral AllChars
+  lexical syntax
+    [a-zA-Z0-9\!\#\%\'\,\:\;\<\=\>\@\_\`\~\$\*\+\?\.\}\|]
+                                                  -> BracketLiteral
+    "/"                                           -> BracketLiteral 
+    [\&\]\-]                                      -> BracketLiteral {reject}
+    [a-zA-Z0-9\!\#\%\'\,\:\;\<\=\>\@\_\`\~\&\]\-]
+                                                  -> AtomLiteral
+    %% "/"                                           -> AtomLiteral 
+    [\}\)\|\[]                                    -> AtomLiteral {reject}
+    
+    [\\\|\$\*\+\?\.\{\}\(\)\&\]\-\[\^\!\#\%\'\,\:\;\<\=\>\@\_\`\~a-zA-Z0-9\t\n\r]*              
+          -> AllChars
+    "/"   -> AllChars
+    "\""  -> AllChars {cons("DoubleQuote") } 
+      
+  sorts BracketCharacter AtomCharacter
+  context-free syntax
+%%d    "\{"                -> BracketCharacter {cons("CurlyBraceOpen") }
+%%d    "\{"                -> AtomCharacter    {cons("CurlyBraceOpen"), avoid}
+    "\""                -> BracketCharacter {cons("DoubleQuote") }
+    "\""                -> AtomCharacter    {cons("DoubleQuote") }
+%%d    "\)"                -> BracketCharacter {cons("BraceClose"), avoid }
+%%d    "\)"                -> AtomCharacter    {cons("BraceClose") }
+
+
+%%
+ %%   Escaping with a '\' to express a special character
+  %%
+  context-free syntax
+    "\\0" OctalValue       -> BracketCharacter {cons("OctalChar")}
+    "\\x" TwoHexValue      -> BracketCharacter {cons("HexHexChar")}
+    "\\u" FourHexValue     -> BracketCharacter {cons("DecHexChar")}
+    "\\t"                  -> BracketCharacter {cons("Tab")}
+    "\\n"                  -> BracketCharacter {cons("Newline")}
+    "\\r"                  -> BracketCharacter {cons("Return")}
+    "\\f"                  -> BracketCharacter {cons("Formfeed")}
+    "\\a"                  -> BracketCharacter {cons("Alarm")}
+    "\\e"                  -> BracketCharacter {cons("Escape")}
+    "\\w"                  -> BracketCharacter {cons("WordChar")}
+    "\\W"                  -> BracketCharacter {cons("NonWordChar")}
+    "\\s"                  -> BracketCharacter {cons("WhiteSpaceChar")}
+    "\\S"                  -> BracketCharacter {cons("NonWhiteSpaceChar")}
+    "\\d"                  -> BracketCharacter {cons("DigitChar")}
+    "\\D"                  -> BracketCharacter {cons("NonDigitChar")}
+    "\\c" ControlValue     -> BracketCharacter {cons("ControlCharacter")}
+    "\\b"                  -> BracketCharacter {cons("WordBoundry")}
+    "\\B"                  -> BracketCharacter {cons("NonWordBoundry")}
+    "\\A"                  -> BracketCharacter {cons("InputBeginBoundry")}
+    "\\G"                  -> BracketCharacter {cons("PrevMatchEndBoundry")}
+    "\\Z"                  -> BracketCharacter {cons("EndInputBoundry")}
+    "\\z"                  -> BracketCharacter {cons("EndInputFinalBoundry")}
+    "\\" BackReference     -> BracketCharacter {cons("BackReference")}
+    "\\ "                  -> BracketCharacter {cons("Space")}
+    "\\\t"                 -> BracketCharacter {cons("Tab")}
+%%d    "\\\r"                 -> BracketCharacter {cons("Return")}
+    "\\\n"                 -> BracketCharacter {cons("Newline")}
+    
+    "\\0" OctalValue       -> AtomCharacter {cons("OctalChar")}
+    "\\x" TwoHexValue      -> AtomCharacter {cons("HexHexChar")}
+    "\\u" FourHexValue     -> AtomCharacter {cons("DecHexChar")}
+    "\\t"                  -> AtomCharacter {cons("Tab")}
+    "\\n"                  -> AtomCharacter {cons("Newline")}
+    "\\r"                  -> AtomCharacter {cons("Return")}
+    "\\f"                  -> AtomCharacter {cons("Formfeed")}
+    "\\a"                  -> AtomCharacter {cons("Alarm")}
+    "\\e"                  -> AtomCharacter {cons("Escape")}
+    "\\w"                  -> AtomCharacter {cons("WordChar")}
+    "\\W"                  -> AtomCharacter {cons("NonWordChar")}
+    "\\s"                  -> AtomCharacter {cons("WhiteSpaceChar")}
+    "\\S"                  -> AtomCharacter {cons("NonWhiteSpaceChar")}
+    "\\d"                  -> AtomCharacter {cons("DigitChar")}
+    "\\D"                  -> AtomCharacter {cons("NonDigitChar")}
+    "\\c" ControlValue     -> AtomCharacter {cons("ControlCharacter")}
+    "\\b"                  -> AtomCharacter {cons("WordBoundry")}
+    "\\B"                  -> AtomCharacter {cons("NonWordBoundry")}
+    "\\A"                  -> AtomCharacter {cons("InputBeginBoundry")}
+    "\\G"                  -> AtomCharacter {cons("PrevMatchEndBoundry")}
+    "\\Z"                  -> AtomCharacter {cons("EndInputBoundry")}
+    "\\z"                  -> AtomCharacter {cons("EndInputFinalBoundry")}
+    "\\" BackReference     -> AtomCharacter {cons("BackReference")}
+    "\\ "                  -> AtomCharacter {cons("Space")}
+    "\\\t"                 -> AtomCharacter {cons("Tab")}
+%%d    "\\\r"                 -> AtomCharacter {cons("Return")}
+    "\\\n"                 -> AtomCharacter {cons("Newline")}
+    
+%%
+ %%   Quoting of symbols is always allowed to express that symbol
+  %%
+  sorts QuotablePatternSymbol
+  context-free syntax
+    "\\" QuotablePatternSymbol            -> AtomCharacter {cons("Quoted")}
+    "\\" QuotablePatternSymbol            -> BracketCharacter {cons("Quoted")}    
+  lexical syntax
+    [\|\$\*\+\?\.\{\}\(\)\&\]\[\-\^\\\!\#\%\'\,\:\;\<\=\>\@\_\`\~\/]
+                                   -> QuotablePatternSymbol
+  context-free syntax
+    "\""                -> QuotablePatternSymbol {cons("DoubleQuote") }
+    "\""                -> QuotablePatternSymbol {cons("DoubleQuote") }    
+%%
+ %%   Defining integers and number values
+  %% 
+  sorts Integer OctalValue TwoHexValue FourHexValue BackReference ControlValue
+  lexical syntax      
+    [0-9]+                                       -> Integer
+    [1-9] [0-9]*                                 -> BackReference
+    [0-7]                                        -> OctalValue
+    [0-7][0-7]                                   -> OctalValue
+    [0-3][0-7][0-7]                              -> OctalValue
+    [0-9A-Fa-f][0-9A-Fa-f]                       -> TwoHexValue
+    [0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f] -> FourHexValue
+    [0-9]                                        -> ControlValue
+    [0-9][0-9]                                   -> ControlValue
+
+%%d  lexical restrictions
+%%d    "/"  -/- [\]]
+%%d    "\\" -/- [\ \t\12\n\r]   
+    
+    
+exports
+  sorts
+    RegexId
+    RegexID
+
+  context-free syntax
+    RegexID -> RegexId {cons("RegexId")}
+
+  lexical syntax
+    [A-Za-z\_\$][A-Za-z0-9\_\$]* -> RegexID
+    
+    "true"  -> RegexID {reject}
+    "false" -> RegexID {reject}
+    "null"  -> RegexID {reject}
+
+  lexical restrictions
+    RegexID -/- [a-zA-Z0-9\_\$]
+
+module basic/IdentifierCon
+
+exports
+
+sorts IdCon
+
+lexical syntax
+
+head:[A-Za-z] tail:[A-Za-z\-0-9\_]* -> IdCon {cons("default")}
+
+lexical restrictions
+
+IdCon -/- [A-Za-z\-0-9\_]
+
+module basic/StrCon
+
+exports
+
+sorts StrCon StrChar
+
+lexical syntax
+    "\\n"                      -> StrChar {cons("newline")}
+    "\\t"                      -> StrChar {cons("tab")}
+    "\\\""                     -> StrChar {cons("quote")}
+    "\\\\"                     -> StrChar {cons("backslash")}
+    "\\" a:[0-9]b:[0-9]c:[0-9] -> StrChar {cons("decimal")}
+    ~[\0-\31\n\t\"\\]          -> StrChar {cons("normal")}
+
+    [\"] chars:StrChar* [\"]   -> StrCon  {cons("default")}
+
+module languages/aterm/syntax/RealCon
+
+imports languages/aterm/syntax/IntCon
+
+hiddens
+  context-free start-symbols 
+    RealCon
+
+exports
+  sorts OptExp RealCon
+
+  context-free syntax
+    "e" IntCon -> OptExp {cons("present")}
+               -> OptExp {cons("absent")}
+
+    base:IntCon "." decimal:NatCon exp:OptExp  -> RealCon {cons("real-con")}
+
+module basic/NatCon
+
+exports
+
+sorts NatCon
+
+lexical syntax
+  
+ [0-9]+ -> NatCon {cons("digits")}
+
+lexical restrictions
+
+ NatCon -/- [0-9]
+
+module basic/Whitespace
+
+exports
+  lexical syntax
+    [\ \t\n\r]	-> LAYOUT {cons("whitespace")}
+
+  context-free restrictions
+    LAYOUT? -/- [\ \t\n\r]
+
+module languages/aterm/syntax/IntCon
+
+imports basic/Whitespace
+	basic/NatCon
+
+hiddens
+  context-free start-symbols 
+    IntCon
+
+exports
+  sorts IntCon
+  context-free syntax
+    NatCon         -> IntCon {cons("natural")}
+    pos:"+" NatCon -> IntCon {cons("positive")}
+    neg:"-" NatCon -> IntCon {cons("negative")}
+
+module languages/aterm/syntax/ATerms
+
+imports languages/aterm/syntax/IntCon 
+        languages/aterm/syntax/RealCon
+	basic/StrCon
+	basic/IdentifierCon
+
+exports
+  sorts AFun ATerm Annotation
+
+  context-free syntax
+	StrCon 	-> AFun {cons("quoted")}
+	IdCon 	-> AFun {cons("unquoted")}
+
+  context-free syntax
+	IntCon 					-> ATerm {cons("int")}
+	RealCon					-> ATerm {cons("real")}
+	fun:AFun 				-> ATerm {cons("fun")}
+	fun:AFun "(" args:{ATerm ","}* ")" 	-> ATerm {cons("appl")} %% changed from + to *
+	NoAFun   "(" args:{ATerm ","}* ")" 	-> ATerm {cons("appl")} %% added for tuple support
+	"<" type:ATerm ">" 			-> ATerm {cons("placeholder")}
+	"[" elems:{ATerm ","}* "]" 		-> ATerm {cons("list")}
+	trm:ATerm Annotation 			-> ATerm {cons("annotated")}
+
+  lexical syntax
+     -> NoAFun %% added for tuple support
+
+  context-free syntax
+	"{" annos:{ ATerm ","}+ "}" 		-> Annotation {cons("default")}
+
+hiddens
+  context-free start-symbols 
+    ATerm
+
+module SugarTest-String-Quotation
+exports
+
+  sorts
+    StringQuotation
+    StringQuotedPart1 StringQuotedChars1 DollarOpen1 DollarClose1 QuotedBracket1 Dollar1
+    StringQuotedPart2 StringQuotedChars2 DollarOpen2 DollarClose2 QuotedBracket2 Dollar2
+    StringQuotedPart3 StringQuotedChars3 DollarOpen3 DollarClose3 QuotedBracket3 Dollar3
+    StringQuotedPart4 StringQuotedChars4 DollarOpen4 DollarClose4 QuotedBracket4 Dollar4
+    Padding
+
+  context-free syntax
+
+    StringQuotation -> PreTerm
+
+  syntax
+
+    StringQuotation -> <PreTerm-CF>
+
+    "$" "[" Padding StringQuotedPart1*               "]"    -> StringQuotation {cons("StringQuotation1") }
+    <StringQuotedChars1-LEX>                                -> StringQuotedPart1 {cons("QStr")}
+    <Dollar1-LEX>                                           -> StringQuotedPart1 {cons("QDollar")}
+    "$" <QuotedBracket1-LEX> "$"                            -> StringQuotedPart1 {cons("QBr")}
+    ~[\[\]\$]+                                              -> <StringQuotedChars1-LEX>
+    [\[\]]                                                  -> <QuotedBracket1-LEX>
+    "$"                                                     -> <Dollar1-LEX>
+
+    "$" "{" Padding StringQuotedPart2*               "}"    -> StringQuotation {cons("StringQuotation2") }
+    <StringQuotedChars2-LEX>                                -> StringQuotedPart2 {cons("QStr")}
+    <Dollar2-LEX>                                           -> StringQuotedPart2 {cons("QDollar")}
+    "$" <QuotedBracket2-LEX> "$"                            -> StringQuotedPart2 {cons("QBr")}
+    ~[\{\}\$]+                                              -> <StringQuotedChars2-LEX>
+    [\{\}]                                                  -> <QuotedBracket2-LEX>
+    "$"                                                     -> <Dollar2-LEX>
+
+    "$" "(" Padding StringQuotedPart3*              ")"     -> StringQuotation {cons("StringQuotation3") }
+    <StringQuotedChars3-LEX>                                -> StringQuotedPart3 {cons("QStr")}
+    <Dollar3-LEX>                                           -> StringQuotedPart3 {cons("QDollar")}
+    "$" <QuotedBracket3-LEX> "$"                            -> StringQuotedPart3 {cons("QBr")}
+    ~[\(\)\$]+                                              -> <StringQuotedChars3-LEX>
+    [\(\)]                                                  -> <QuotedBracket3-LEX>
+    "$"                                                     -> <Dollar3-LEX>
+
+    "$" "<" Padding StringQuotedPart4*               ">"    -> StringQuotation {cons("StringQuotation4") }
+    <StringQuotedChars4-LEX>                                -> StringQuotedPart4 {cons("QStr")}
+    <Dollar4-LEX>                                           -> StringQuotedPart4 {cons("QDollar")}
+    "$" <QuotedBracket4-LEX> "$"                            -> StringQuotedPart4 {cons("QBr")}
+    ~[\<\>\$]+                                              -> <StringQuotedChars4-LEX>
+    [\<\>]                                                  -> <QuotedBracket4-LEX>
+    "$"                                                     -> <Dollar4-LEX>
+   
+    <Padding-LEX>                                           -> Padding
+                                                            -> <Padding-LEX> {indentpadding}
+
+  lexical restrictions
+
+    StringQuotedChars1 -/- ~[\[\]\$]   
+    StringQuotedChars2 -/- ~[\{\}\$]    
+    StringQuotedChars3 -/- ~[\(\)\$]    
+    StringQuotedChars4 -/- ~[\<\>\$]
+    Dollar1            -/- [\[\]] . [\$]
+    Dollar2            -/- [\{\}] . [\$]
+    Dollar3            -/- [\(\)] . [\$]
+    Dollar4            -/- [\<\>] . [\$]
+
+module Common
+
+exports
+
+  lexical syntax
+  
+    [a-zA-Z][a-zA-Z0-9\_\-\$\']* -> ID {prefer}
+    "-"? [0-9]+                  -> INT
+    
+    "\"" StringChar* "\"" -> STRING
+    ~[\"\n]               -> StringChar
+    "\\\""                -> StringChar
+    BackSlashChar         -> StringChar
+    "\\"                  -> BackSlashChar
+
+    %%[\ \t\n\r] -> LAYOUT
+    
+    -> EOF
+  
+  lexical restrictions
+  
+    %% Ensure greedy matching for lexicals
+  
+    %%CommentChar -/- [\/]
+    INT           -/- [0-9]
+    ID            -/- [a-zA-Z0-9\_\-\$\']
+    
+    %% EOF may not be followed by any char
+    
+    EOF           -/- ~[]
+
+    %% Backslash chars in strings may not be followed by " 
+    
+    BackSlashChar -/- [\"]
+
+  context-free restrictions
+  
+    %%LAYOUT? -/- [\ \t\n\r]
+ 
+
+module SugarTest
+
+imports Common
+imports SugarTest-String-Quotation
+imports languages/aterm/syntax/ATerms
+imports RegExp
+%%imports Stratego-Sugar [ Ws -> LAYOUT => IGNORE -> IGNORE ]
+
+exports
+  context-free start-symbols TestSuite
+
+exports
+  sorts TestSuite TopSort Test Input Result
+  context-free syntax
+    Header* TestDecl*   -> TestSuite {cons("testsuite")}
+    "COMPLETION" ID     -> TestSuite {cons("CompletionHelper")}
+    "module" ID         -> Header {cons("Name")}
+    "package" ID        -> Header {cons("Package")}
+    "start" "symbol" ID -> Header {cons("TopSort")}
+    "language" ID       -> Header {cons("Language")}
+    
+    %% Switch to disable completion tests per file (Spoofax/544)
+    "disable" "completion" "tests" -> Header {cons("CompletionDisable")}
+
+	%% For testing source-to-source transformations
+    "target" "start" "symbol" ID -> Header {cons("TargetTopSort")}
+    "target" "language" ID       -> Header {cons("TargetLanguage")}
+
+    Test         -> TestDecl
+    VarDecl      -> TestDecl
+
+  %% The description syntax is very ambiguous if comments are allowed around it. So, we forbid comments.
+  syntax
+    %% TODO: support tests with no fragment (other than the setup blocks) but only a condition
+    
+    "setup" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> -> <Test-CF> {cons("Setup")}
+    "setup" <OptSpace-LEX> <Description-CF>                         -> <Test-CF> {cons("SetupEmpty")}
+
+    %% target setup uses Output while setup uses Input so that all Input terms
+    %% can be parsed with the source language, and all Output terms can be
+    %% parsed with the target language. (i.e., simplifies Java code)
+    "target" <LAYOUT?-CF> "setup" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Output-CF> -> <Test-CF> {cons("TargetSetup")}
+    "target" <LAYOUT?-CF> "setup" <OptSpace-LEX> <Description-CF>                          -> <Test-CF> {cons("TargetSetupEmpty")}
+
+    "test" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> <LAYOUT?-CF> <Result*-CF> -> <Test-CF> {cons("Test")}
+    "test" <OptSpace-LEX> <Description-CF> -> <Test-CF> {cons("TestEmpty")}
+
+  context-free syntax
+    ID "=" ATerm -> VarDecl {cons("VarDecl")}
+ 
+  lexical syntax
+    [\ ]+   -> OptSpace
+    NoSpace -> OptSpace
+            -> NoSpace
+
+  lexical restrictions
+    OptSpace -/- [\ ]
+    NoSpace  -/- ~[\[].~[\[]
+
+  context-free syntax
+
+    "parse" "to" "file" PathName -> Result {cons("file")}
+    "parse" "to" ATerm   -> Result {cons("pattern")}
+    "parse" "to" Output   -> Result {cons("ParseOutput")}
+
+    "parse" "fails"      -> Result {cons("FailsParsing")}
+    "parse" "succeeds"   -> Result {cons("SuccessParsing"), prefer}
+    "parse"              -> Result {cons("SuccessParsing")}
+
+    "file" PathName -> Input {cons("file")}
+
+    INT "error"         -> Result    {cons("Error")}
+    INT "errors"        -> Result    {cons("Errors")}
+
+    INT "warning"       -> Result    {cons("Warning")}
+    INT "warnings"      -> Result    {cons("Warnings")}
+
+    INT "note"          -> Result    {cons("Note")}
+    INT "notes"         -> Result    {cons("Notes")}
+
+    INT "fatal" "error" -> Result    {cons("Fatal")}
+    INT "fatal" "errors"-> Result    {cons("Fatals")}
+
+
+    "resolve" OptNumbered                     -> Result {cons("Resolve")}
+    "resolve" Numbered "to" Numbered          -> Result {cons("ResolveTo")}
+    "complete" OptNumbered                    -> Result {cons("Complete")}
+    "complete" OptNumbered "to" STRING        -> Result {cons("CompleteTo")}
+    
+    "build"    ID OptArgument OptPattern -> Result {cons("Build")}
+    "run"      ID OptArgument OptPattern -> Result {cons("Run")}
+    "refactor" ID OptArgument OptPattern -> Result {cons("Refactor")}
+    
+                         -> OptArgument {cons("None")}
+    "(" STRING ")"       -> OptArgument {cons("Argument")}
+                         -> OptPattern {cons("wildcard")}
+    "to" "file" PathName -> OptPattern {cons("File")}
+    "to" Output          -> OptPattern {cons("Fragment")}
+    "to" ATerm           -> OptPattern {cons("ATerm"), avoid}
+    "fails"              -> OptPattern {cons("Fails"), prefer}
+
+    RegexExp          -> Result
+
+    "#" INT  -> Numbered {cons("Numbered")}
+    Numbered -> OptNumbered
+             -> OptNumbered {cons("Unnumbered")}
+    
+    %% Handle a couple of lousy recoveries
+    "test"  -> ID    {reject}
+    "setup" -> ID    {reject}
+    "test"  -> ATerm {reject}
+    "setup" -> ATerm {reject}
+            -> "fails" {recover, reject}
+            -> "resolves" {recover, reject}
+            -> "=>" {recover, reject}
+            -> "->" {recover, reject}
+            -> "/" {recover, reject}
+            -> "file" {recover, reject}
+    "COMPLETION" ID     -> Result {cons("CompletionHelper")}
+
+  %% test Primitive refactoring test
+  %% [[ module x entity X {} ]] refactoring rename at X input Y =>
+  %% [[ module x entity Y {} ]]
+
+context-free syntax
+
+    "_"                  -> ATerm  {cons("wildcard")}
+    "..."                -> { ATerm ","}+ {cons("wildcardvar")}
+
+  sorts
+  syntax
+      
+    %% magic
+
+    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-LEX> -> <Input-CF> {cons("Input")}
+    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-LEX> -> <Input-CF> {cons("Input")}
+    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-LEX> -> <Input-CF> {cons("Input")}
+
+    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-CF> -> <Output-CF> {cons("Output")}
+    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Output-CF> {cons("Output")}
+    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Output-CF> {cons("Output")}
+    
+                                                      -> <TailParts2-CF> {cons("Done")}
+    <MarkedPart2-CF> <StringPart2-CF> <TailParts2-CF> -> <TailParts2-CF> {cons("More")}
+                                                      -> <TailParts3-CF> {cons("Done")}
+    <MarkedPart3-CF> <StringPart3-CF> <TailParts3-CF> -> <TailParts3-CF> {cons("More")}
+                                                      -> <TailParts4-CF> {cons("Done")}
+    <MarkedPart4-CF> <StringPart4-CF> <TailParts4-CF> -> <TailParts4-CF> {cons("More")}
+    
+    <NFBracket2-LEX> <StringPart2-CF> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("Marked")}
+    <NFBracket3-LEX> <StringPart3-CF> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("Marked")}
+    <NFBracket4-LEX> <StringPart4-CF> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("Marked")}
+    
+    <NFBracket2-LEX> <ThreeDots-LEX> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("MarkedPlaceholder"), prefer}
+    <NFBracket3-LEX> <ThreeDots-LEX> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("MarkedPlaceholder"), prefer}
+    <NFBracket4-LEX> <ThreeDots-LEX> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("MarkedPlaceholder"), prefer}
+    
+    <InputChars2-LEX> -> <StringPart2-CF> {cons("QuotePart")}
+    <InputChars3-LEX> -> <StringPart3-CF> {cons("QuotePart")}
+    <InputChars4-LEX> -> <StringPart4-CF> {cons("QuotePart")}
+
+  context-free syntax
+    EOLString -> Description {cons("description")}
+
+  lexical syntax
+
+    (~[\n\[\"]|EOLQuote1)* -> EOLString
+    [\"]                   -> EOLQuote1
+    
+  lexical syntax
+
+    (~[\[\]]  | Bracket1 | CBracket1)*                         -> InputChars2
+    (~[\[\]]  | Bracket1 | Bracket2 | CBracket1 | CBracket2)*  -> InputChars3
+    (~[\[\]]  | Bracket1 | Bracket2 | Bracket3 
+              | CBracket1 | CBracket2 | CBracket3)*            -> InputChars4
+
+    "["    -> Bracket1
+    "[["   -> Bracket2
+    "[[["  -> Bracket3
+    "[[[[" -> Bracket4
+
+    "]"    -> CBracket1
+    "]]"   -> CBracket2
+    "]]]"  -> CBracket3
+    "]]]]" -> CBracket4
+    
+    "..."  -> ThreeDots
+
+    %% non-follow-restricted:
+
+    "["    -> NFBracket1
+    "[["   -> NFBracket2
+    "[[["  -> NFBracket3
+    "[[[[" -> NFBracket4
+    
+    "]"    -> NFCBracket1
+    "]]"   -> NFCBracket2
+    "]]]"  -> NFCBracket3
+    "]]]]" -> NFCBracket4
+
+  sorts PathName
+  lexical syntax
+    [A-Za-z0-9\-\_\.\\\/]+ -> PathName
+
+  lexical restrictions
+    EOLString -/- ~[\n\[\"]
+    EOLQuote1 -/- [\"]
+    
+    %% InputChars2 -/- ~[\[\]]
+
+    Bracket1   -/- [\[].~[\[]
+    Bracket2   -/- [\[].~[\[] %% allow [[[[x]]  ]]
+    Bracket3   -/- [\[].~[\[]
+
+    CBracket1   -/- [\]]
+    CBracket2   -/- [\]]
+    CBracket3   -/- [\]]
+
+  sorts ShortCom LongCom CommChar Asterisk 
+  lexical syntax
+    "//" ~[\n]* ([\n] | EOF) -> ShortCom
+    "/*" CommChar* "*/"      -> LongCom
+
+    ~[\*]      -> CommChar
+
+    "*"        -> Asterisk
+    Asterisk   -> CommChar
+
+  lexical restrictions
+    Asterisk -/- [\/]
+
+  lexical syntax
+    ShortCom    -> LAYOUT
+    LongCom     -> LAYOUT
+   
+  context-free restrictions
+    LAYOUT? -/- [\/]/[\/]
+    LAYOUT? -/- [\/].[\*]

@@ -1,0 +1,78 @@
+module check-resolve
+
+imports
+  libstratego-lib
+  libstratego-aterm
+  include/SugarTest
+  lib/editor-common.generated
+  aterm-eq
+  sugartest
+  check
+
+rules
+  
+  spt-desugar:
+    Resolve(n) -> ResolveTo(n, wildcard())
+  
+  spt-desugar:
+    Unnumbered() -> Numbered("1")
+
+  check-expectation(|ast, selections, messages) :
+    ResolveTo(_, _) -> $[No reference resolving defined for [<Language>]]
+    where
+      spt-get-reference-resolvers => []
+  
+  check-error:
+    Test(_, _, input{a*}, expectations) -> error*
+    where
+      !a* => [ast | selections];
+      reference* := <collect-all(?Numbered(_) + ?Unnumbered(), conc)> expectations;
+      error*     := <filter(check-selection(|selections))> reference*;
+      not([])
+  
+  check-selection(|selections):
+    Numbered(n) -> (<id>, $[No identifier selection #[n] found in input])
+    where
+      not(resolve-selection(|selections))
+  
+  resolve-selection(|selections):
+    Numbered(n) -> selection
+    where
+      n'        := <string-to-int> n;
+      selection := <index(|n')> selections
+  
+  resolve-selection(|selections):
+    wildcard() -> wildcard()
+
+  check-expectation(|ast, selections, messages) :
+    ResolveTo(from, to) -> error
+    where
+      from' := <resolve-selection(|selections)> from;
+      to'   := <resolve-selection(|selections)> to
+    with
+      input1    := <get-service-input-term> from';
+      input2    := <get-service-input-term-without-ancestor> from';
+      resolvers := <spt-get-reference-resolvers>;
+      results   := <map(execute-service(|input1); ?Some(_) <+
+                       execute-service(|input2))> resolvers
+    where
+      switch !results
+        case one(is-successful-resolver(|to')): fail
+        case one(?Some(t)):  error := $[Unexpected result:
+                                        <pre>[<write-to-html-string> t]</pre>]
+        case one(?Error(m)): error := $[Unexpected error resolving:
+                                        <pre>[m]</pre>]; say(!m)
+        case one(?Fail(m)):  error := $[Unexpected error resolving:
+                                        <pre>[m]</pre>]; say(!m)
+        otherwise: with(fail)
+      end
+  
+  is-successful-resolver(|expected):
+    Some(result) -> <id>
+    where
+      !expected => wildcard()
+    <+
+      oncetd(origin-equal(|expected))
+    <+
+      expected-offset := <origin-offset> expected;
+      <oncetd(origin-offset => expected-offset)> result

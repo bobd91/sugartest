@@ -1,0 +1,240 @@
+%% Grammar for the SugarTest language
+module SugarTest
+
+imports Common
+imports SugarTest-String-Quotation
+imports languages/aterm/syntax/ATerms
+imports RegExp
+%%imports Stratego-Sugar [ Ws -> LAYOUT => IGNORE -> IGNORE ]
+
+exports
+  context-free start-symbols TestSuite
+
+exports
+  sorts TestSuite TopSort Test Input Result
+  context-free syntax
+    Header* TestDecl*   -> TestSuite {cons("testsuite")}
+    "COMPLETION" ID     -> TestSuite {cons("CompletionHelper")}
+    "module" ID         -> Header {cons("Name")}
+    "package" ID        -> Header {cons("Package")}
+    "start" "symbol" ID -> Header {cons("TopSort")}
+    "language" ID       -> Header {cons("Language")}
+    
+    %% Switch to disable completion tests per file (Spoofax/544)
+    "disable" "completion" "tests" -> Header {cons("CompletionDisable")}
+
+	%% For testing source-to-source transformations
+    "target" "start" "symbol" ID -> Header {cons("TargetTopSort")}
+    "target" "language" ID       -> Header {cons("TargetLanguage")}
+
+    Test         -> TestDecl
+    VarDecl      -> TestDecl
+
+  %% The description syntax is very ambiguous if comments are allowed around it. So, we forbid comments.
+  syntax
+    %% TODO: support tests with no fragment (other than the setup blocks) but only a condition
+    
+    "setup" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> -> <Test-CF> {cons("Setup")}
+    "setup" <OptSpace-LEX> <Description-CF>                         -> <Test-CF> {cons("SetupEmpty")}
+
+    %% target setup uses Output while setup uses Input so that all Input terms
+    %% can be parsed with the source language, and all Output terms can be
+    %% parsed with the target language. (i.e., simplifies Java code)
+    "target" <LAYOUT?-CF> "setup" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Output-CF> -> <Test-CF> {cons("TargetSetup")}
+    "target" <LAYOUT?-CF> "setup" <OptSpace-LEX> <Description-CF>                          -> <Test-CF> {cons("TargetSetupEmpty")}
+
+    "test" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> <LAYOUT?-CF> <Result*-CF> -> <Test-CF> {cons("Test")}
+    "test" <OptSpace-LEX> <Description-CF> -> <Test-CF> {cons("TestEmpty")}
+
+  context-free syntax
+    ID "=" ATerm -> VarDecl {cons("VarDecl")}
+ 
+  lexical syntax
+    [\ ]+   -> OptSpace
+    NoSpace -> OptSpace
+            -> NoSpace
+
+  lexical restrictions
+    OptSpace -/- [\ ]
+    NoSpace  -/- ~[\[].~[\[]
+
+  context-free syntax
+
+    "parse" "to" "file" PathName -> Result {cons("file")}
+    "parse" "to" ATerm   -> Result {cons("pattern")}
+    "parse" "to" Output   -> Result {cons("ParseOutput")}
+
+    "parse" "fails"      -> Result {cons("FailsParsing")}
+    "parse" "succeeds"   -> Result {cons("SuccessParsing"), prefer}
+    "parse"              -> Result {cons("SuccessParsing")}
+
+    "file" PathName -> Input {cons("file")}
+
+    INT "error"         -> Result    {cons("Error")}
+    INT "errors"        -> Result    {cons("Errors")}
+
+    INT "warning"       -> Result    {cons("Warning")}
+    INT "warnings"      -> Result    {cons("Warnings")}
+
+    INT "note"          -> Result    {cons("Note")}
+    INT "notes"         -> Result    {cons("Notes")}
+
+    INT "fatal" "error" -> Result    {cons("Fatal")}
+    INT "fatal" "errors"-> Result    {cons("Fatals")}
+
+
+    "resolve" OptNumbered                     -> Result {cons("Resolve")}
+    "resolve" Numbered "to" Numbered          -> Result {cons("ResolveTo")}
+    "complete" OptNumbered                    -> Result {cons("Complete")}
+    "complete" OptNumbered "to" STRING        -> Result {cons("CompleteTo")}
+    
+    "build"    ID OptArgument OptPattern -> Result {cons("Build")}
+    "run"      ID OptArgument OptPattern -> Result {cons("Run")}
+    "refactor" ID OptArgument OptPattern -> Result {cons("Refactor")}
+    
+                         -> OptArgument {cons("None")}
+    "(" STRING ")"       -> OptArgument {cons("Argument")}
+                         -> OptPattern {cons("wildcard")}
+    "to" "file" PathName -> OptPattern {cons("File")}
+    "to" Output          -> OptPattern {cons("Fragment")}
+    "to" ATerm           -> OptPattern {cons("ATerm"), avoid}
+    "fails"              -> OptPattern {cons("Fails"), prefer}
+
+    RegexExp          -> Result
+
+    "#" INT  -> Numbered {cons("Numbered")}
+    Numbered -> OptNumbered
+             -> OptNumbered {cons("Unnumbered")}
+    
+    %% Handle a couple of lousy recoveries
+    "test"  -> ID    {reject}
+    "setup" -> ID    {reject}
+    "test"  -> ATerm {reject}
+    "setup" -> ATerm {reject}
+            -> "fails" {recover, reject}
+            -> "resolves" {recover, reject}
+            -> "=>" {recover, reject}
+            -> "->" {recover, reject}
+            -> "/" {recover, reject}
+            -> "file" {recover, reject}
+    "COMPLETION" ID     -> Result {cons("CompletionHelper")}
+
+  %% test Primitive refactoring test
+  %% [[ module x entity X {} ]] refactoring rename at X input Y =>
+  %% [[ module x entity Y {} ]]
+
+context-free syntax
+
+    "_"                  -> ATerm  {cons("wildcard")}
+    "..."                -> { ATerm ","}+ {cons("wildcardvar")}
+
+  sorts
+  syntax
+      
+    %% magic
+
+    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-LEX> -> <Input-CF> {cons("Input")}
+    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-LEX> -> <Input-CF> {cons("Input")}
+    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-LEX> -> <Input-CF> {cons("Input")}
+
+    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-CF> -> <Output-CF> {cons("Output")}
+    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Output-CF> {cons("Output")}
+    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Output-CF> {cons("Output")}
+    
+                                                      -> <TailParts2-CF> {cons("Done")}
+    <MarkedPart2-CF> <StringPart2-CF> <TailParts2-CF> -> <TailParts2-CF> {cons("More")}
+                                                      -> <TailParts3-CF> {cons("Done")}
+    <MarkedPart3-CF> <StringPart3-CF> <TailParts3-CF> -> <TailParts3-CF> {cons("More")}
+                                                      -> <TailParts4-CF> {cons("Done")}
+    <MarkedPart4-CF> <StringPart4-CF> <TailParts4-CF> -> <TailParts4-CF> {cons("More")}
+    
+    <NFBracket2-LEX> <StringPart2-CF> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("Marked")}
+    <NFBracket3-LEX> <StringPart3-CF> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("Marked")}
+    <NFBracket4-LEX> <StringPart4-CF> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("Marked")}
+    
+    <NFBracket2-LEX> <ThreeDots-LEX> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("MarkedPlaceholder"), prefer}
+    <NFBracket3-LEX> <ThreeDots-LEX> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("MarkedPlaceholder"), prefer}
+    <NFBracket4-LEX> <ThreeDots-LEX> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("MarkedPlaceholder"), prefer}
+    
+    <InputChars2-LEX> -> <StringPart2-CF> {cons("QuotePart")}
+    <InputChars3-LEX> -> <StringPart3-CF> {cons("QuotePart")}
+    <InputChars4-LEX> -> <StringPart4-CF> {cons("QuotePart")}
+
+  context-free syntax
+    EOLString -> Description {cons("description")}
+
+  lexical syntax
+
+    (~[\n\[\"]|EOLQuote1)* -> EOLString
+    [\"]                   -> EOLQuote1
+    
+  lexical syntax
+
+    (~[\[\]]  | Bracket1 | CBracket1)*                         -> InputChars2
+    (~[\[\]]  | Bracket1 | Bracket2 | CBracket1 | CBracket2)*  -> InputChars3
+    (~[\[\]]  | Bracket1 | Bracket2 | Bracket3 
+              | CBracket1 | CBracket2 | CBracket3)*            -> InputChars4
+
+    "["    -> Bracket1
+    "[["   -> Bracket2
+    "[[["  -> Bracket3
+    "[[[[" -> Bracket4
+
+    "]"    -> CBracket1
+    "]]"   -> CBracket2
+    "]]]"  -> CBracket3
+    "]]]]" -> CBracket4
+    
+    "..."  -> ThreeDots
+
+    %% non-follow-restricted:
+
+    "["    -> NFBracket1
+    "[["   -> NFBracket2
+    "[[["  -> NFBracket3
+    "[[[[" -> NFBracket4
+    
+    "]"    -> NFCBracket1
+    "]]"   -> NFCBracket2
+    "]]]"  -> NFCBracket3
+    "]]]]" -> NFCBracket4
+
+  sorts PathName
+  lexical syntax
+    [A-Za-z0-9\-\_\.\\\/]+ -> PathName
+
+  lexical restrictions
+    EOLString -/- ~[\n\[\"]
+    EOLQuote1 -/- [\"]
+    
+    %% InputChars2 -/- ~[\[\]]
+
+    Bracket1   -/- [\[].~[\[]
+    Bracket2   -/- [\[].~[\[] %% allow [[[[x]]  ]]
+    Bracket3   -/- [\[].~[\[]
+
+    CBracket1   -/- [\]]
+    CBracket2   -/- [\]]
+    CBracket3   -/- [\]]
+
+  sorts ShortCom LongCom CommChar Asterisk 
+  lexical syntax
+    "//" ~[\n]* ([\n] | EOF) -> ShortCom
+    "/*" CommChar* "*/"      -> LongCom
+
+    ~[\*]      -> CommChar
+
+    "*"        -> Asterisk
+    Asterisk   -> CommChar
+
+  lexical restrictions
+    Asterisk -/- [\/]
+
+  lexical syntax
+    ShortCom    -> LAYOUT
+    LongCom     -> LAYOUT
+   
+  context-free restrictions
+    LAYOUT? -/- [\/]/[\/]
+    LAYOUT? -/- [\/].[\*]
+

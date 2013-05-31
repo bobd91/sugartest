@@ -1,0 +1,100 @@
+module check-complete
+
+imports
+  libstratego-lib
+  libstratego-aterm
+  include/SugarTest
+  lib/editor-common.generated
+  aterm-eq
+  sugartest
+  check-resolve
+  check
+
+signature constructors
+    
+  COMPLETION : Term -> Term
+  NOCONTEXT  : Term -> Term
+
+rules
+  
+  spt-desugar:
+    Complete(x) -> CompleteTo(x, wildcard())
+  
+  
+  /*
+  	Set a DR to indicate that completion tests are disabled. Necessary for selective workarounds of issues in Spoofax/544.
+  */
+  spt-desugar:
+  	CompletionDisable() -> <fail>
+  	where
+  		rules( DisableCompletion: _) 
+
+	check-note:
+		CompletionDisable() -> (<id>, $[This directive disables all completion tests in this file])
+
+	check-note:
+		CompleteTo(from, to) -> (<id>, $[Completion tests are disabled by "disable completion tests" directive in the file header])
+		where DisableCompletion
+
+  check-expectation(|ast, selections, messages) :
+    CompleteTo(from, to) -> $[[error][tip]]
+    where not(DisableCompletion)
+    where
+      from' := <resolve-selection(|selections)> from
+    with
+      to'       := <un-double-quote> to;
+      from''    := <get-completion-input-term> from';
+      resolvers := <spt-get-content-proposers>;
+      results   := <map(execute-service(|from'')); try(filter-on-prefix(|from))> resolvers
+    where
+      switch !results
+        case one(is-successful-completion(|from', to')): fail
+        case filter(?Some(<id>)) => t: 
+                             error := $[Unexpected result: [<try(flatten-list); write-to-html-string> t]]
+        case one(?Error(m)): error := $[Unexpected error: [m]]; say(!m)
+        case one(?Fail(m)):  error := $[Unexpected error: [m]]; say(!m)
+        otherwise: with(fail)
+      end;
+      // On failure, report any inline errors
+      if <grab-errors> messages => [] then
+        tip := ""
+      else
+        tip := $[<br/>(showing semantic errors in fragment while this test fails) <br/>Completion tests have known issues (Spoofax/544), add "disable completion tests" to the file header to temporarily disable them]
+      end
+  
+  get-completion-input-term: //TODO: input term building is in fact more complex. 
+    x -> tuple
+    where
+      x-root := <repeat(prim("SSL_EXT_get_parent", <id>))> x;
+      if y-root := <oncetd(origin-equal(|x); oncetd(!COMPLETION(<is-string; ?cstring>)); ?x')> x-root then
+        y-root' := <prim("SSL_EXT_clone_and_set_parents", y-root)>;
+        y       := <collect-one(?x')> y-root'
+      else
+        y := NOCONTEXT(x) 
+      end;
+      tuple := <
+      	get-service-input-term; 
+      	alltd(
+      	  preserve-annos(!COMPLETION(<origin-equal(|cstring); !"">));
+      	  \s{a*} -> s{<map(try(?cstring; !""))> a*}\
+      	)
+      > y
+  
+  filter-on-prefix(|from):
+    Some(results) -> Some(results')
+    where
+      if <is-string> from then
+        results' := <filter(string-starts-with(|from))> results 
+      else
+        results' := results
+      end
+  
+  is-successful-completion(|from, expected):
+    Some(results) -> <id>
+    where
+      if !expected => wildcard() then
+        <not([])> results
+      else
+        <oncetd(strip-annos; ?expected)> results
+      end
+      

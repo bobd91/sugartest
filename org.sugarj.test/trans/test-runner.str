@@ -1,0 +1,78 @@
+module test-runner
+
+imports
+  libstratego-lib
+  libstratego-aterm
+  include/SugarTest
+  editor-common.generated
+  check
+  
+signature constructors 
+  True  : Boolean  
+  False : Boolean
+
+strategies
+  find(s) =
+  	abspath 
+  ; string-replace(|"/./", "/") => base
+  ; readdir
+  ; filter(
+      !$[[base]/[<id>]]
+    ; if <isdir> <filemode> then
+        find(s)
+      else
+        s
+      end
+    )
+  ; flatten-list
+  
+  test-runner:
+    (selected, position, ast, path, project-path) -> None()
+    with 	
+    testlistener-init 
+  ; find-all-testsuites-in-project
+  ; map(testlistener-add-testsuite(|<id>, project-path))
+  ; map(try(run-testsuite(|project-path)))
+
+
+  test-runner-file:
+    (selected, position, ast, path, project-path) -> None()
+    with
+      testlistener-init 
+    ; !$[[project-path]/[path]]
+    ; testlistener-add-testsuite(|<id>, project-path)
+    ; try(run-testsuite(|project-path))
+  
+  find-all-testsuites-in-project =
+    <find(has-extension(|"sugt"))> "." 
+  ; string-sort
+
+  run-testsuite(|project-path) =
+  	file := <id>
+    ; ast  := <parse-spt-file(|project-path)>
+    ; ast' := <topdown(repeat(spt-desugar)); alltd(spt-desugar-refactoring-conditions)> ast 
+    ; testcases := <collect-all(testlistener-add-testcase(|file, <test-to-description>,<origin-offset;Fst>))>ast'
+    ; <map(run-testcase(|file))>testcases
+  
+  run-testcase(|testsuite) = 
+    ?tst
+  ; test-to-description => name
+  ; testlistener-start-testcase(|testsuite, name)
+  ; if errors := <check-error>tst ; not((id,[])) then
+      testlistener-finish-testcase(|testsuite, name, False())
+    else
+      testlistener-finish-testcase(|testsuite, name, True()) 
+    end
+    
+  test-to-description = 
+    ?Test(_, description(<id>), _, _)  
+  + ?TestEmpty(_, description(<id>))
+
+  external testlistener-init(|)
+  external testlistener-add-testsuite(|testsuite, project-path)
+  external testlistener-add-testcase(|testsuite, description, linenr)
+  external testlistener-start-testcase(|testsuite, description)
+  external testlistener-finish-testcase(|testsuite, description, result)
+  external parse-spt-file(|project-path)
+    
+  

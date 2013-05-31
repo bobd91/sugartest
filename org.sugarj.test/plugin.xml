@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?eclipse version="3.0"?>
+
+<plugin>
+       <extension point="org.eclipse.imp.runtime.languageDescription">
+          <language extensions="sugt" description="SugarTest" language="SugarTest" derivedFrom="DynamicRoot" validator="org.sugarj.test.SugarTestValidator" validatorClass="org.sugarj.test.SugarTestValidator"></language>
+       </extension>
+       <extension id="org.sugarj.test.parser" name="SugarTest Parser" point="org.eclipse.imp.runtime.parser">
+          <parser class="org.sugarj.test.SugarTestParseController" language="SugarTest">
+          </parser>
+       </extension>    
+    </plugin>
