@@ -11,8 +11,15 @@ imports
 
 strategies
 
-  aterm-eq(|p) =
-    <aterm-eq>(<explode-aterm>,<read-from-string>p)
+
+  aterm-contains(|p) =
+  	oncetd(aterm-eq(|p))
+  	
+  aterm-eq(|p):
+  	(term, ast) -> <id>
+  	where
+      <aterm-eq> (<last> ast, p)
+
 
   aterm-eq =
     aterm-appl0-to-fun

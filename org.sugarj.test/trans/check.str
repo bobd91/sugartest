@@ -199,6 +199,12 @@ rules
     ; not(<aterm-eq> (exploded, p))
 
   check-expectation(|ast, selections, messages) :
+    containspattern(p) -> $[Does not contain pattern: [<write-to-html-string> ast]]
+    where
+      exploded := <explode-aterm> ast
+    ; not(<aterm-contains(|p)> exploded)
+
+  check-expectation(|ast, selections, messages) :
     ParseOutput(_{^[output | _]}) -> $[Does not match pattern: [result]]
     where
       not(<eq> (ast, output))
@@ -259,14 +265,14 @@ rules
     RegexPattern(r) -> (r, $[Full regular expression support not implemented])
     where
       not(simple-regex-to-string)
-  
+
   check-expectation(|ast, selection, messages) :
     RegexPattern(r) -> $[Messages do not match "[r']": [<grab-messages> messages]]
     where
       r'  := <simple-regex-to-string>;
       r'' := <lower-case> r';
       not(<oncetd(match-message(|r''))> messages)
-  
+
   match-message(|r):
     (term, message) -> <id>
     where

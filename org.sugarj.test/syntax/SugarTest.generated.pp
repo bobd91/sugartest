@@ -165,6 +165,7 @@
    file                      -- KW["parse"] KW["to"] KW["file"] _1,
    pattern                   -- KW["parse"] KW["to"] _1,
    ParseOutput               -- KW["parse"] KW["to"] _1,
+   containspattern           -- KW["parse"] KW["contains"] _1,
    FailsParsing              -- KW["parse"] KW["fails"],
    SuccessParsing            -- KW["parse"] KW["succeeds"],
    SuccessParsing            -- KW["parse"],

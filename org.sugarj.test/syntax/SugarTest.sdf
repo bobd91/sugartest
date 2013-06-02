@@ -63,6 +63,8 @@ exports
     "parse" "to" "file" PathName -> Result {cons("file")}
     "parse" "to" ATerm   -> Result {cons("pattern")}
     "parse" "to" Output   -> Result {cons("ParseOutput")}
+    
+    "parse" "contains" ATerm -> Result {cons("containspattern")}
 
     "parse" "fails"      -> Result {cons("FailsParsing")}
     "parse" "succeeds"   -> Result {cons("SuccessParsing"), prefer}
