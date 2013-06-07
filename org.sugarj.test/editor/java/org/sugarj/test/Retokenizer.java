@@ -22,6 +22,7 @@ import org.spoofax.jsglr.client.imploder.Token;
 import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.terms.TermVisitor;
 import org.strategoxt.imp.runtime.Environment;
+import org.sugarj.common.Log;
 
 /** 
  * Copied from org.strategoxt.imp.testing.Retozenizer
@@ -88,7 +89,6 @@ public class Retokenizer {
 		((Token) endToken).setEndOffset(endOffset); // cut off if too long
 		int startIndex = startToken.getIndex();
 		int endIndex = endToken.getIndex();
-		
 		// Reassign new starting token to parsed fragment (skipping whitespace)
 		if (startToken.getKind() == TK_LAYOUT && startIndex + 1 < fragmentTokenizer.getTokenCount()
 				&& startIndex < endIndex)
@@ -186,6 +186,7 @@ public class Retokenizer {
 	
 	@Override
 	public String toString() {
-		return newTokenizer.toString();
+		return newTokenizer.toString();	  
 	}
+	
 }

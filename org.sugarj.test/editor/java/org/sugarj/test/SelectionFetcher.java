@@ -1,19 +1,19 @@
 package org.sugarj.test;
 
 import static org.spoofax.interpreter.core.Tools.termAt;
-import static org.spoofax.jsglr_layout.client.imploder.AbstractTokenizer.getTokenAfter;
-import static org.spoofax.jsglr_layout.client.imploder.AbstractTokenizer.getTokenBefore;
-import static org.spoofax.jsglr_layout.client.imploder.IToken.TK_ESCAPE_OPERATOR;
-import static org.spoofax.jsglr_layout.client.imploder.ImploderAttachment.getLeftToken;
-import static org.spoofax.jsglr_layout.client.imploder.ImploderAttachment.getRightToken;
+import static org.spoofax.jsglr.client.imploder.AbstractTokenizer.getTokenAfter;
+import static org.spoofax.jsglr.client.imploder.AbstractTokenizer.getTokenBefore;
+import static org.spoofax.jsglr.client.imploder.IToken.TK_ESCAPE_OPERATOR;
+import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
+import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getRightToken;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.spoofax.interpreter.terms.IStrategoList;
 import org.spoofax.interpreter.terms.IStrategoTerm;
-import org.spoofax.jsglr_layout.client.imploder.IToken;
-import org.spoofax.jsglr_layout.client.imploder.ITokenizer;
+import org.spoofax.jsglr.client.imploder.IToken;
+import org.spoofax.jsglr.client.imploder.ITokenizer;
 import org.spoofax.terms.TermVisitor;
 import org.strategoxt.imp.runtime.Environment;
 import org.strategoxt.imp.runtime.stratego.StrategoTermPath;

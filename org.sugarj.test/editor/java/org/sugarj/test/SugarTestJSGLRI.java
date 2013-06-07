@@ -109,7 +109,7 @@ public class SugarTestJSGLRI extends JSGLRI {
     final LanguageLibFactory targetLanguage = hasTargetLanguageLib(root)
               ? getTargetLanguageLib(root)
               : language;
-final FragmentParser testedParser = configureFragmentParser(root, getSugarJLanguage(), fragmentParser);
+    final FragmentParser testedParser = configureFragmentParser(root, getSugarJLanguage(), fragmentParser);
     final FragmentParser outputParser = hasTargetLanguageLib(root)
         ? testedParser : configureFragmentParser(root, getSugarJLanguage(), outputFragmentParser);
     assert !(nonParentFactory instanceof ParentTermFactory);
@@ -118,7 +118,7 @@ final FragmentParser testedParser = configureFragmentParser(root, getSugarJLangu
         || outputParser == null || !outputParser.isInitialized()) {
       return root;
     }
-
+    
     IStrategoTerm result = new TermTransformer(factory, true) {
       
       private int testCount;
