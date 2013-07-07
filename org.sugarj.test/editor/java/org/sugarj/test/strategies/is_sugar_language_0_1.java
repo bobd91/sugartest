@@ -5,7 +5,7 @@ import static org.spoofax.interpreter.core.Tools.asJavaString;
 import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.strategoxt.lang.Context;
 import org.strategoxt.lang.Strategy;
-import org.sugarj.LanguageLibRegistry;
+import org.sugarj.BaseLanguageRegistry;
 
 /**
  * @author Bob Davison
@@ -16,7 +16,7 @@ public class is_sugar_language_0_1 extends Strategy {
 
 	@Override
 	public IStrategoTerm invoke(Context context, IStrategoTerm current, IStrategoTerm language) {
-		if(null != LanguageLibRegistry.getInstance().getLanguageLibByName(asJavaString(language))) {
+		if(null != BaseLanguageRegistry.getInstance().getBaseLanguageByName(asJavaString(language))) {
 			return current;
 		} else {
 			return null;

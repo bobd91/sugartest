@@ -45,23 +45,27 @@ class Fragment {
   private static final IStrategoConstructor QUOTEPART_1 =
     Environment.getTermFactory().makeConstructor("QuotePart", 1);
   
+  private static final IStrategoConstructor MARKED_TEST_NUMBER_3 =
+      Environment.getTermFactory().makeConstructor("MarkedTestNumber", 3);
+  
   private static final int EXCLUSIVE = 1;
     
   private String input;
   private String output;
-  
+
   private IStrategoTerm term;
-  private OffsetRegion inputRegion;
+  private FragmentRegion region;
   private int outputStart;
   private int outputEnd;
   
   private boolean successExpected;
   
-  Fragment(String input, IStrategoTerm term, List<OffsetRegion> setupRegions) {
+  Fragment(String input, IStrategoTerm term, int testNumber, List<FragmentRegion> setupRegions) {
     this.input = input;
     this.term = term;
+    region = new FragmentRegion(term);    
     successExpected = isSuccessExpected();
-    createText(setupRegions);
+    createText(testNumber, setupRegions);
   }
   
   /**
@@ -82,16 +86,16 @@ class Fragment {
    *                          may not be the current tokenizer as that may have been compromised by the test system
    * @return                  the result of the parse with new ImploderAttachment
    */
-  public IStrategoTerm retokenize(IStrategoTerm parsed, ITokenizer parsedTokenizer) { 
+  public IStrategoTerm realign(IStrategoTerm parsed, ITokenizer parsedTokenizer) { 
     IToken startToken = parsedTokenizer.getTokenAtOffset(outputStart);
     IToken endToken = parsedTokenizer.getTokenAtOffset(outputStart < outputEnd ? outputEnd - 1 : outputStart);
     int startIndex = startToken.getIndex();
     int endIndex = endToken.getIndex();
-    int offsetAdjust = inputRegion.getStartOffset() - startToken.getStartOffset();
+    int offsetAdjust = region.getStartOffset() - startToken.getStartOffset();
     
     Tokenizer tokenizer = new Tokenizer(input, parsedTokenizer.getFilename(), null);
-    tokenizer.setPositions(inputRegion.getStartLine(), inputRegion.getStartOffset(), 
-          inputRegion.getStartOffset() - inputRegion.getStartColumn());
+    tokenizer.setPositions(region.getStartLine(), region.getStartOffset(), 
+          region.getStartOffset() - region.getStartColumn());
     
     for(int index = startIndex ; index <= endIndex ; index++) {
       IToken token = parsedTokenizer.getTokenAt(index);
@@ -107,41 +111,46 @@ class Fragment {
     return parsed;
   }
   
- private void createText(List<OffsetRegion> setupRegions) {
-    IStrategoTerm fragmentHead = term.getSubterm(1);
-    IStrategoTerm fragmentTail = term.getSubterm(2);
-    inputRegion = new OffsetRegion(fragmentHead, fragmentTail);
+ private void createText(int testNumber, List<FragmentRegion> setupRegions) {
     StringBuilder result = new StringBuilder(input.length());
     boolean addedFragment = false;
 
-    for (OffsetRegion setup : setupRegions) {
-      if (!addedFragment && setup.getStartOffset() >= inputRegion.getStartOffset()) {
-        appendFragment(fragmentHead, fragmentTail, input, result);
+    for (FragmentRegion setup : setupRegions) {
+      if (!addedFragment && setup.getStartOffset() >= region.getStartOffset()) {
+        appendFragment(region.getHead(), region.getTail(), input, testNumber, result);
         addedFragment = true;
-      } else {
-        result.append(input, setup.getStartOffset(), setup.getEndOffset() + EXCLUSIVE);
+      }
+      if(setup.getStartOffset() != region.getStartOffset()) {
+        appendSetup(setup.getHead(), setup.getTail(), input, testNumber, result);
       }
     }
     
     if (!addedFragment) {
-      appendFragment(fragmentHead, fragmentTail, input, result);
+      appendFragment(region.getHead(), region.getTail(), input, testNumber, result);
     }
  
     output = result.toString(); 
   }
   
-   private void appendFragment(IStrategoTerm head, IStrategoTerm tail, String input, StringBuilder result) {
+   private void appendFragment(IStrategoTerm head, IStrategoTerm tail, String input, int testNumber, StringBuilder result) {
     outputStart = result.length();
-    appendFragment(head, input, result);
-    appendFragment(tail, input, result);
+    appendFragment(head, input, testNumber, result);
+    appendFragment(tail, input, testNumber, result);
     outputEnd = result.length();
   }
   
-  private void appendFragment(IStrategoTerm term, String input, StringBuilder output) {
+   private void appendSetup(IStrategoTerm head, IStrategoTerm tail, String input, int testNumber, StringBuilder result) {
+     appendFragment(head, input, testNumber, result);
+     appendFragment(tail, input, testNumber, result);
+   }
+
+   private void appendFragment(IStrategoTerm term, String input, int testNumber, StringBuilder output) {
     IToken left = getLeftToken(term);
     IToken right = getRightToken(term);
     if (tryGetConstructor(term) == QUOTEPART_1) {
       output.append(input, left.getStartOffset(), right.getEndOffset() + EXCLUSIVE);
+    } else if(tryGetConstructor(term) == MARKED_TEST_NUMBER_3) {
+      output.append(formatTestNumber(testNumber, EXCLUSIVE + right.getEndOffset() - left.getStartOffset()));
     } else if (isTermString(term)) {
       // Brackets: treat as whitespace
       assert asJavaString(term).length() <= 4 : "Bracket expected: " + term;
@@ -149,9 +158,13 @@ class Fragment {
     } else {
       // Other: recurse
       for (int i = 0; i < term.getSubtermCount(); i++) {
-        appendFragment(term.getSubterm(i), input, output);
+        appendFragment(term.getSubterm(i), input, testNumber, output);
       }
     }
+  }
+  
+  private String formatTestNumber(int testNumber, int width) {
+    return (testNumber + new String(new char[width]).replace('\0', ' ')).substring(0,width);
   }
 
   private void addWhitespace(String input, int startOffset, int endOffset, StringBuilder output) {

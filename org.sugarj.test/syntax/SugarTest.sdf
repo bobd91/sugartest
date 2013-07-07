@@ -158,6 +158,10 @@ context-free syntax
     <NFBracket3-LEX> <ThreeDots-LEX> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("MarkedPlaceholder"), prefer}
     <NFBracket4-LEX> <ThreeDots-LEX> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("MarkedPlaceholder"), prefer}
     
+    <NFBracket2-LEX> <Hash-LEX> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("MarkedTestNumber"), prefer}
+    <NFBracket3-LEX> <Hash-LEX> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("MarkedTestNumber"), prefer}
+    <NFBracket4-LEX> <Hash-LEX> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("MarkedTestNumber"), prefer}
+    
     <InputChars2-LEX> -> <StringPart2-CF> {cons("QuotePart")}
     <InputChars3-LEX> -> <StringPart3-CF> {cons("QuotePart")}
     <InputChars4-LEX> -> <StringPart4-CF> {cons("QuotePart")}
@@ -188,6 +192,7 @@ context-free syntax
     "]]]]" -> CBracket4
     
     "..."  -> ThreeDots
+    "#"    -> Hash
 
     %% non-follow-restricted:
 

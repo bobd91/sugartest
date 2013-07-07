@@ -7,22 +7,22 @@ import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.spoofax.jsglr.client.imploder.IToken;
 
 /**
- * An (inclusive) offset tuple. (Modified from org.spoofax.imp.testing)
+ * An (inclusive) offset tuple. (Modified from org.spoofax.imp.testing.OffsetRegion)
  * 
  * Added start line and column as required to restore original token positions
+ * Also store fragment head and tail
  *
  * @author Lennart Kats <lennart add lclnet.nl>
  * @author Bob Davison
  */
-class OffsetRegion {
+class FragmentRegion {
   private int startOffset, endOffset;
   private int startLine, startColumn;
+  private IStrategoTerm head, tail;
 
-  OffsetRegion(IStrategoTerm term) {
-    this(term, term);
-  }
-  
-  OffsetRegion(IStrategoTerm head, IStrategoTerm tail) {
+  FragmentRegion(IStrategoTerm term) {
+    head = term.getSubterm(1);
+    tail = term.getSubterm(2);
     IToken left = getLeftToken(head);
     IToken right = getRightToken(tail);
     startOffset = left.getStartOffset();
@@ -49,5 +49,13 @@ class OffsetRegion {
   
   int getStartColumn() {
     return startColumn;
+  }
+  
+  IStrategoTerm getHead() {
+    return head;
+  }
+
+  IStrategoTerm getTail() {
+    return tail;
   }
 }

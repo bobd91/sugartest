@@ -36,9 +36,10 @@ import org.strategoxt.imp.runtime.dynamicloading.Descriptor;
 import org.strategoxt.imp.runtime.dynamicloading.IDynamicLanguageService;
 import org.strategoxt.imp.runtime.parser.JSGLRI;
 import org.strategoxt.imp.runtime.parser.SGLRParseController;
-import org.sugarj.LanguageLibFactory;
-import org.sugarj.LanguageLibRegistry;
+import org.sugarj.AbstractBaseLanguage;
+import org.sugarj.BaseLanguageRegistry;
 import org.sugarj.common.FileCommands;
+import org.sugarj.common.Log;
 
 /**
  * Slightly modified copy of org.strategoxt.imp.testing.SpoofaxTestingJSGLRI
@@ -95,7 +96,6 @@ public class SugarTestJSGLRI extends JSGLRI {
   protected IStrategoTerm doParse(String input, String filename)
       throws TokenExpectedException, BadTokenException, SGLRException,
       IOException {
-
     IStrategoTerm ast = super.doParse(input, filename);
     return parseTestedFragments(ast, filename);
   }
@@ -105,23 +105,24 @@ public class SugarTestJSGLRI extends JSGLRI {
     final Retokenizer retokenizer = new Retokenizer(oldTokenizer);
     final ITermFactory nonParentFactory = Environment.getTermFactory();
     final ITermFactory factory = new ParentTermFactory(nonParentFactory);
-    final LanguageLibFactory language = getLanguageLib(root);
-    final LanguageLibFactory targetLanguage = hasTargetLanguageLib(root)
-              ? getTargetLanguageLib(root)
+    final AbstractBaseLanguage language = getLanguage(root);
+    final AbstractBaseLanguage targetLanguage = hasTargetLanguage(root)
+              ? getTargetLanguage(root)
               : language;
     final FragmentParser testedParser = configureFragmentParser(root, getSugarJLanguage(), fragmentParser);
-    final FragmentParser outputParser = hasTargetLanguageLib(root)
+    final FragmentParser outputParser = hasTargetLanguage(root)
         ? testedParser : configureFragmentParser(root, getSugarJLanguage(), outputFragmentParser);
     assert !(nonParentFactory instanceof ParentTermFactory);
 
-    if (testedParser == null || !testedParser.isInitialized()
+    if (language == null || targetLanguage == null
+        || testedParser == null || !testedParser.isInitialized()
         || outputParser == null || !outputParser.isInitialized()) {
       return root;
     }
     
     IStrategoTerm result = new TermTransformer(factory, true) {
       
-      private int testCount;
+      private int testNumber;
       
       @Override
       public IStrategoTerm preTransform(IStrategoTerm term) {
@@ -131,11 +132,11 @@ public class SugarTestJSGLRI extends JSGLRI {
         
         if (cons == INPUT_4) {
           parser = testedParser;
-          testFilename = makeTestFilename(filename, language, testCount++);
+          testFilename = makeTestFilename(filename, language, ++testNumber);
         }
         else if (cons == OUTPUT_4) {
           parser = outputParser;
-          testFilename = makeTestFilename(filename, targetLanguage, testCount++);
+          testFilename = makeTestFilename(filename, targetLanguage, ++testNumber);
         }
         
         if (parser != null && testFilename != null) {
@@ -143,7 +144,7 @@ public class SugarTestJSGLRI extends JSGLRI {
           IStrategoTerm fragmentTail = termAt(term, 2);
           retokenizer.copyTokensUpToIndex(getLeftToken(fragmentHead).getIndex() - 1);
           try {
-            IStrategoTerm parsed = parser.parse(oldTokenizer, term, testFilename, false);
+            IStrategoTerm parsed = parser.parse(oldTokenizer, term, testFilename, testNumber);
             int oldFragmentEndIndex = getRightToken(fragmentTail).getIndex();
             retokenizer.copyTokensFromFragment(fragmentHead, fragmentTail, parsed,
                 getLeftToken(fragmentHead).getStartOffset(), getRightToken(fragmentTail).getEndOffset());
@@ -224,19 +225,19 @@ public class SugarTestJSGLRI extends JSGLRI {
     }
   }
   
-  private LanguageLibFactory getLanguageLib(IStrategoTerm root) {
+  private AbstractBaseLanguage getLanguage(IStrategoTerm root) {
     final String languageName = getLanguageName(root, LANGUAGE_1);
     if (languageName == null) return null;
-    return LanguageLibRegistry.getInstance().getLanguageLibByName(languageName);
+    return BaseLanguageRegistry.getInstance().getBaseLanguageByName(languageName);
   }
   
-  private LanguageLibFactory getTargetLanguageLib(IStrategoTerm root) {
+  private AbstractBaseLanguage getTargetLanguage(IStrategoTerm root) {
     String languageName = getLanguageName(root, TARGET_LANGUAGE_1);
     if (languageName == null) return null;
-    return LanguageLibRegistry.getInstance().getLanguageLibByName(languageName);
+    return BaseLanguageRegistry.getInstance().getBaseLanguageByName(languageName);
   }
   
-  private boolean hasTargetLanguageLib(IStrategoTerm root) {
+  private boolean hasTargetLanguage(IStrategoTerm root) {
     return null != getLanguageName(root, TARGET_LANGUAGE_1);
   }
   
@@ -247,7 +248,7 @@ public class SugarTestJSGLRI extends JSGLRI {
     return sugarj;
   }
   
-  private String makeTestFilename(String filename, LanguageLibFactory language, int count) {
+  private String makeTestFilename(String filename, AbstractBaseLanguage language, int count) {
     return FileCommands.dropExtension(filename) + count + "." + language.getSugarFileExtension();
   }
    

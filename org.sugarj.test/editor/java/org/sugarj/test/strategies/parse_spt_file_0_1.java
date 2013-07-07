@@ -51,11 +51,10 @@ public class parse_spt_file_0_1 extends Strategy {
 		
 		File file = new File(filename);
 
-		Language l = LanguageRegistry.findLanguage("SugarTest");
-		Descriptor d = Environment.getDescriptor(l);
+		Descriptor descriptor = Environment.getDescriptor(LanguageRegistry.findLanguage("SugarTest"));
 		IStrategoTerm result = null;
 		try {
-			IParseController ip = d.createParseController();
+			IParseController ip = descriptor.createParseController();
 			if (ip instanceof DynamicParseController)
 				ip = ((DynamicParseController) ip).getWrapped();
 			if (ip instanceof SGLRParseController) {

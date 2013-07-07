@@ -3,7 +3,9 @@ package org.sugarj.test;
 import static org.spoofax.terms.Term.tryGetConstructor;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.imp.model.ISourceProject;
@@ -22,6 +24,7 @@ import org.strategoxt.imp.runtime.dynamicloading.DynamicParseController;
 import org.strategoxt.imp.runtime.parser.JSGLRI;
 import org.strategoxt.imp.runtime.parser.SGLRParseController;
 import org.strategoxt.imp.runtime.stratego.SourceAttachment;
+import org.sugarj.common.Log;
 import org.sugarj.editor.SugarJParser;
 
 /**
@@ -40,9 +43,21 @@ public class FragmentParser {
   
   private static final int FRAGMENT_PARSE_TIMEOUT = 3000;
   
-  private static final IStrategoConstructor QUOTEPART_1 =
-    Environment.getTermFactory().makeConstructor("QuotePart", 1);
+  private static final IStrategoConstructor INPUT_4 =
+    Environment.getTermFactory().makeConstructor("Input", 4);
+    
+  private static final IStrategoConstructor OUTPUT_4 =
+    Environment.getTermFactory().makeConstructor("Output", 4);
   
+  /**
+   * HACK: edit/save on same file avoids the Spoofax
+   * parse lock as different ParseControllers are used.
+   * We must avoid parallel parses of the same file as SugarJ
+   * will interrupt one of the parses causing errors on good tests.
+   * Force the use of a single parser for each file so we can parse lock
+   */
+  private static Map<IPath, JSGLRI> parsers = new HashMap<IPath, JSGLRI>();
+
   private final IStrategoConstructor setup_3;
 
   private final IStrategoConstructor topsort_1;
@@ -51,7 +66,7 @@ public class FragmentParser {
   
   private JSGLRI parser;
 
-  private List<OffsetRegion> setupRegions;
+  private List<FragmentRegion> setupRegions;
   
   private boolean isLastSyntaxCorrect;
 
@@ -75,7 +90,16 @@ public class FragmentParser {
     return parser != null;
   }
   
-  protected JSGLRI getParser(Descriptor descriptor, IPath path, ISourceProject project) {
+  private static IPath standardPath(IPath path) {
+    // Path from edit has no device set but path from save does so we remove it to get a match
+    return path.setDevice(null);
+  }
+
+  private static synchronized JSGLRI getParser(Descriptor descriptor, IPath path, ISourceProject project) {
+    JSGLRI result = parsers.get(standardPath(path));
+    if(result != null)
+      return result;
+    
     try {
       if (descriptor == null) return null;
       
@@ -86,7 +110,7 @@ public class FragmentParser {
       if (controller instanceof SGLRParseController) {
         SGLRParseController sglrController = (SGLRParseController) controller;
         controller.initialize(path, project, null);
-        JSGLRI result = sglrController.getParser(); 
+        result = sglrController.getParser(); 
         
         if(result instanceof SugarJParser) {
           result = new SugarJTestParser(result);
@@ -98,6 +122,7 @@ public class FragmentParser {
 
         result.setTimeout(FRAGMENT_PARSE_TIMEOUT);
         result.setUseRecovery(true);
+        parsers.put(standardPath(path), result);
         return result;
       } else {
         throw new IllegalStateException(
@@ -111,10 +136,10 @@ public class FragmentParser {
     return null;
   }
 
-  public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename, boolean ignoreSetup)
+  public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename, int testNumber)
       throws TokenExpectedException, BadTokenException, SGLRException, IOException {
     
-    Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, setupRegions);
+    Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, testNumber, setupRegions);
     IStrategoTerm parsed;
 
     SGLRParseController controller = parser.getController();
@@ -125,25 +150,30 @@ public class FragmentParser {
       controller.getParseLock().unlock();
     }
     
-    FragmentParseInfo info = new FragmentParseInfo(parsed);
-    isLastSyntaxCorrect = info.wasSyntaxCorrect();
-    if(!info.wasCached()) {
-      SourceAttachment.putSource(parsed, SourceAttachment.getResource(fragmentTerm), controller);
+    if(parsed == null) {
+      isLastSyntaxCorrect = false;
+      return fragmentTerm;
+    } else {
+      FragmentParseInfo info = new FragmentParseInfo(parsed);
+      isLastSyntaxCorrect = info.wasSyntaxCorrect();
+      if(!info.wasCached()) {
+        SourceAttachment.putSource(parsed, SourceAttachment.getResource(fragmentTerm), controller);
+      }
+      return fragment.realign(parsed, info.originalTokenizer());
     }
-    return fragment.retokenize(parsed, info.originalTokenizer());
   }
 
   
-  private List<OffsetRegion> getSetupRegions(IStrategoTerm ast) {
-    final List<OffsetRegion> results = new ArrayList<OffsetRegion>();
+  private List<FragmentRegion> getSetupRegions(IStrategoTerm ast) {
+    final List<FragmentRegion> results = new ArrayList<FragmentRegion>();
     new TermVisitor() {
       public void preVisit(IStrategoTerm term) {
         if (tryGetConstructor(term) == setup_3) {
           new TermVisitor() {
             public final void preVisit(IStrategoTerm term) {
-              if (tryGetConstructor(term) == QUOTEPART_1) {
-                term = term.getSubterm(0);
-                results.add(new OffsetRegion(term));
+              IStrategoConstructor constructor = tryGetConstructor(term);
+              if (constructor == INPUT_4 || constructor == OUTPUT_4) {
+                results.add(new FragmentRegion(term));
               }
             }
           }.visit(term);

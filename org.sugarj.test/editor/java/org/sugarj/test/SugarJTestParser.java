@@ -7,8 +7,8 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.strategoxt.imp.runtime.parser.JSGLRI;
-import org.sugarj.LanguageLibFactory;
-import org.sugarj.LanguageLibRegistry;
+import org.sugarj.BaseLanguageRegistry;
+import org.sugarj.AbstractBaseLanguage;
 import org.sugarj.common.CommandExecution;
 import org.sugarj.common.Environment;
 import org.sugarj.common.FileCommands;
@@ -36,8 +36,8 @@ class SugarJTestParser extends SugarJParser {
   
   @Override
   public IStrategoTerm doParse(String input, String filename) throws IOException {
-    LanguageLibFactory languageLib = LanguageLibRegistry.getInstance().getLanguageLib(FileCommands.getExtension(filename));
-    if(languageLib == null) {
+    AbstractBaseLanguage baseLanguage = BaseLanguageRegistry.getInstance().getBaseLanguage(FileCommands.getExtension(filename));
+    if(baseLanguage == null) {
       // SugarTestJSGLRI sets the files extension so this should never happen 
       throw new RuntimeException("Unknown source-file extension " + FileCommands.getExtension(filename));
     }
@@ -45,7 +45,7 @@ class SugarJTestParser extends SugarJParser {
     prepareConsole();
     
     try {
-       return Driver.run(input, makeRelative(filename), environment, new NullProgressMonitor(), languageLib).getSugaredSyntaxTree();
+       return Driver.run(input, makeRelative(filename), environment, new NullProgressMonitor(), baseLanguage).getSugaredSyntaxTree();
     } catch(IOException ioe) {
       throw(ioe);
     } catch(Exception e) {
