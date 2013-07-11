@@ -153,7 +153,7 @@ rules
       else
         result' := <explode-aterm> result;
         not(<aterm-eq> (result', p));
-        result-string := <pp-aterm-box; box2text-string(|60)> result
+        result-string := <topdown(strip-annos) ; pp-aterm-box; box2text-string(|60)> result
       end
   
   is-string-equal-modulo-whitespace:
