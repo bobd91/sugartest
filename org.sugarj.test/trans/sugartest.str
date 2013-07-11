@@ -104,7 +104,7 @@ rules
     end 
 
   spt-pp-aterm =
-    pp-aterm-box ; box2text-string(|80)
+    topdown(strip-annos) ; pp-aterm-box ; box2text-string(|80)
     
   //external input-dialog(|title, message, initial)
 

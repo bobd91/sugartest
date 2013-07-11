@@ -1,7 +1,15 @@
 package org.sugarj.test;
 
+import static org.sugarj.test.AstConstructors.QUOTEPART_1;
+import static org.sugarj.test.AstConstructors.MARKED_TEST_NUMBER_3;
+import static org.spoofax.interpreter.core.Tools.asJavaString;
+import static org.spoofax.interpreter.core.Tools.isTermString;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getRightToken;
+import static org.spoofax.terms.Term.tryGetConstructor;
+
+import java.util.LinkedList;
+import java.util.List;
 
 import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.spoofax.jsglr.client.imploder.IToken;
@@ -11,16 +19,20 @@ import org.spoofax.jsglr.client.imploder.IToken;
  * 
  * Added start line and column as required to restore original token positions
  * Also store fragment head and tail
+ * 
+ * Collect info on subregions so that text can be recovered, needed as setup fragments may have different tokens
+ * after the first parse and so using tokens to find setup text after the first parse does not work
  *
  * @author Lennart Kats <lennart add lclnet.nl>
  * @author Bob Davison
  */
-class FragmentRegion {
+public class FragmentRegion {
   private int startOffset, endOffset;
   private int startLine, startColumn;
   private IStrategoTerm head, tail;
+  private List<SubRegion> subRegions = new LinkedList<SubRegion>();
 
-  FragmentRegion(IStrategoTerm term) {
+  public FragmentRegion(IStrategoTerm term) {
     head = term.getSubterm(1);
     tail = term.getSubterm(2);
     IToken left = getLeftToken(head);
@@ -29,33 +41,108 @@ class FragmentRegion {
     startLine = left.getLine();
     startColumn = left.getColumn();
     endOffset = right.getEndOffset();
+    
+    addSubRegions(head);
+    addSubRegions(tail);
   }
+  
   @Override
   public String toString() {
     return "[" + startLine + ":" + startColumn + "(" + startOffset + "-" + endOffset + ")]";
   }
   
-  int getStartOffset() {
+  public int getStartOffset() {
     return startOffset;
   }
   
-  int getEndOffset() {
+  public int getEndOffset() {
     return endOffset;
   }
   
-  int getStartLine() {
+  public int getStartLine() {
     return startLine;
   }
   
-  int getStartColumn() {
+  public int getStartColumn() {
     return startColumn;
   }
   
-  IStrategoTerm getHead() {
+  public IStrategoTerm getHead() {
     return head;
   }
 
-  IStrategoTerm getTail() {
+  public IStrategoTerm getTail() {
     return tail;
   }
+  
+  public String getText(String input, int testNumber) {
+    StringBuilder output = new StringBuilder();
+    for(SubRegion sub : subRegions) {
+      output.append(sub.getText(input, testNumber));
+    }
+    return output.toString();
+  }
+  
+  private void addSubRegions(IStrategoTerm term) {
+    IToken left = getLeftToken(term);
+    IToken right = getRightToken(term);
+    if (tryGetConstructor(term) == QUOTEPART_1) {
+      subRegions.add(new TextSubRegion(left.getStartOffset(), right.getEndOffset()));
+    } else if(tryGetConstructor(term) == MARKED_TEST_NUMBER_3) {
+      subRegions.add(new TestNumberSubRegion(left.getStartOffset(), right.getEndOffset()));
+    } else if (isTermString(term)) {
+      // Brackets: treat as whitespace
+      assert asJavaString(term).length() <= 4 : "Bracket expected: " + term;
+      subRegions.add(new WhitespaceSubRegion(left.getStartOffset(), right.getEndOffset()));
+    } else {
+      // Other: recurse
+      for (int i = 0; i < term.getSubtermCount(); i++) {
+        addSubRegions(term.getSubterm(i));
+      }
+    }
+  }
+  
+  static abstract class SubRegion {
+    int start;
+    int end;
+    SubRegion(int start, int end) {
+      this.start = start;
+      this.end = end;
+    }
+    abstract String getText(String input, int testNumber);
+    
+    // Utility
+    static String spaces(int n) {
+      return new String(new char[n]).replace('\0', ' ');
+    }
+  }
+  
+  static class TextSubRegion extends SubRegion {
+    TextSubRegion(int start, int end) {
+      super(start, end);
+    }
+    String getText(String input, int testNumber) {
+      return input.substring(start, end + 1);
+    }
+  }
+  
+  static class TestNumberSubRegion extends SubRegion {
+    TestNumberSubRegion(int start, int end) {
+      super(start, end);
+    }
+    String getText(String input, int testNumber) {
+      int width = 1 + end - start;
+      return (testNumber + spaces(width)).substring(0,width);
+    }
+  }
+  
+  static class WhitespaceSubRegion extends SubRegion {
+    WhitespaceSubRegion(int start, int end) {
+      super(start, end);
+    }
+    String getText(String input, int testNumber) {
+      int width = 1 + end - start;
+      return spaces(width);
+    }
+  }  
 }

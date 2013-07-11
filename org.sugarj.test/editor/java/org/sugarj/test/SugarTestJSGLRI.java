@@ -1,5 +1,12 @@
 package org.sugarj.test;
 
+import static org.sugarj.test.AstConstructors.SETUP_3;
+import static org.sugarj.test.AstConstructors.SUGAR_SETUP_3;
+import static org.sugarj.test.AstConstructors.INPUT_4;
+import static org.sugarj.test.AstConstructors.OUTPUT_4;
+import static org.sugarj.test.AstConstructors.DESUGAR_4;
+import static org.sugarj.test.AstConstructors.LANGUAGE_1;
+import static org.sugarj.test.AstConstructors.ERROR_1;
 import static org.spoofax.interpreter.core.Tools.asJavaString;
 import static org.spoofax.interpreter.core.Tools.isTermList;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
@@ -39,7 +46,6 @@ import org.strategoxt.imp.runtime.parser.SGLRParseController;
 import org.sugarj.AbstractBaseLanguage;
 import org.sugarj.BaseLanguageRegistry;
 import org.sugarj.common.FileCommands;
-import org.sugarj.common.Log;
 
 /**
  * Slightly modified copy of org.strategoxt.imp.testing.SpoofaxTestingJSGLRI
@@ -50,37 +56,10 @@ import org.sugarj.common.Log;
  */
 public class SugarTestJSGLRI extends JSGLRI {
   private static final int PARSE_TIMEOUT = 20 * 1000;
-  
-  private static final IStrategoConstructor INPUT_4 =
-    Environment.getTermFactory().makeConstructor("Input", 4);
-  
-  private static final IStrategoConstructor OUTPUT_4 =
-    Environment.getTermFactory().makeConstructor("Output", 4);
-  
-  private static final IStrategoConstructor ERROR_1 =
-    Environment.getTermFactory().makeConstructor("Error", 1);
-  
-  private static final IStrategoConstructor LANGUAGE_1 =
-    Environment.getTermFactory().makeConstructor("Language", 1);
 
-  private static final IStrategoConstructor TARGET_LANGUAGE_1 =
-    Environment.getTermFactory().makeConstructor("TargetLanguage", 1);
-
-  private static final IStrategoConstructor SETUP_3 =
-    Environment.getTermFactory().makeConstructor("Setup", 3);
-
-  private static final IStrategoConstructor TARGET_SETUP_3 =
-    Environment.getTermFactory().makeConstructor("TargetSetup", 3);
-
-  private static final IStrategoConstructor TOPSORT_1 =
-    Environment.getTermFactory().makeConstructor("TopSort", 1);
-
-  private static final IStrategoConstructor TARGET_TOPSORT_1 =
-    Environment.getTermFactory().makeConstructor("TargetTopSort", 1);
+  private final FragmentParser sugarFragmentParser = new FragmentParser(SETUP_3, SUGAR_SETUP_3);
   
-  private final FragmentParser fragmentParser = new FragmentParser(SETUP_3, TOPSORT_1);
-  
-  private final FragmentParser outputFragmentParser = new FragmentParser(TARGET_SETUP_3, TARGET_TOPSORT_1);
+  private final FragmentParser desugarFragmentParser = new FragmentParser(SETUP_3);
 
   private final SelectionFetcher selections = new SelectionFetcher();
   
@@ -106,17 +85,13 @@ public class SugarTestJSGLRI extends JSGLRI {
     final ITermFactory nonParentFactory = Environment.getTermFactory();
     final ITermFactory factory = new ParentTermFactory(nonParentFactory);
     final AbstractBaseLanguage language = getLanguage(root);
-    final AbstractBaseLanguage targetLanguage = hasTargetLanguage(root)
-              ? getTargetLanguage(root)
-              : language;
-    final FragmentParser testedParser = configureFragmentParser(root, getSugarJLanguage(), fragmentParser);
-    final FragmentParser outputParser = hasTargetLanguage(root)
-        ? testedParser : configureFragmentParser(root, getSugarJLanguage(), outputFragmentParser);
+    final FragmentParser sugarParser = configureFragmentParser(root, getSugarJLanguage(), sugarFragmentParser);
+    final FragmentParser desugarParser = configureFragmentParser(root, getSugarJLanguage(), desugarFragmentParser);
     assert !(nonParentFactory instanceof ParentTermFactory);
 
-    if (language == null || targetLanguage == null
-        || testedParser == null || !testedParser.isInitialized()
-        || outputParser == null || !outputParser.isInitialized()) {
+    if (language == null 
+        || sugarParser == null || !sugarParser.isInitialized()
+        || desugarParser == null || !desugarParser.isInitialized()) {
       return root;
     }
     
@@ -130,13 +105,13 @@ public class SugarTestJSGLRI extends JSGLRI {
         FragmentParser parser = null;
         String testFilename = null;
         
-        if (cons == INPUT_4) {
-          parser = testedParser;
+        if (cons == INPUT_4 || cons == OUTPUT_4) {
+          parser = sugarParser;
           testFilename = makeTestFilename(filename, language, ++testNumber);
         }
-        else if (cons == OUTPUT_4) {
-          parser = outputParser;
-          testFilename = makeTestFilename(filename, targetLanguage, ++testNumber);
+        else if (cons == DESUGAR_4) {
+          parser = desugarParser;
+          testFilename = makeTestFilename(filename, language, ++testNumber);
         }
         
         if (parser != null && testFilename != null) {
@@ -231,16 +206,7 @@ public class SugarTestJSGLRI extends JSGLRI {
     return BaseLanguageRegistry.getInstance().getBaseLanguageByName(languageName);
   }
   
-  private AbstractBaseLanguage getTargetLanguage(IStrategoTerm root) {
-    String languageName = getLanguageName(root, TARGET_LANGUAGE_1);
-    if (languageName == null) return null;
-    return BaseLanguageRegistry.getInstance().getBaseLanguageByName(languageName);
-  }
-  
-  private boolean hasTargetLanguage(IStrategoTerm root) {
-    return null != getLanguageName(root, TARGET_LANGUAGE_1);
-  }
-  
+ 
   private Language getSugarJLanguage() {
     Language sugarj = LanguageRegistry.findLanguage(SUGARJ);
     if(sugarj == null) 

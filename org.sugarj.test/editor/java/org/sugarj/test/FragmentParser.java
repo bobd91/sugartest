@@ -1,5 +1,6 @@
 package org.sugarj.test;
 
+import static org.sugarj.test.AstConstructors.INPUT_4;
 import static org.spoofax.terms.Term.tryGetConstructor;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import org.strategoxt.imp.runtime.dynamicloading.DynamicParseController;
 import org.strategoxt.imp.runtime.parser.JSGLRI;
 import org.strategoxt.imp.runtime.parser.SGLRParseController;
 import org.strategoxt.imp.runtime.stratego.SourceAttachment;
-import org.sugarj.common.Log;
 import org.sugarj.editor.SugarJParser;
 
 /**
@@ -43,24 +43,16 @@ public class FragmentParser {
   
   private static final int FRAGMENT_PARSE_TIMEOUT = 3000;
   
-  private static final IStrategoConstructor INPUT_4 =
-    Environment.getTermFactory().makeConstructor("Input", 4);
-    
-  private static final IStrategoConstructor OUTPUT_4 =
-    Environment.getTermFactory().makeConstructor("Output", 4);
-  
   /**
    * HACK: edit/save on same file avoids the Spoofax
    * parse lock as different ParseControllers are used.
    * We must avoid parallel parses of the same file as SugarJ
    * will interrupt one of the parses causing errors on good tests.
-   * Force the use of a single parser for each file so we can parse lock
+   * Force the use of a single parser for each file so we can parse lock.
    */
   private static Map<IPath, JSGLRI> parsers = new HashMap<IPath, JSGLRI>();
 
-  private final IStrategoConstructor setup_3;
-
-  private final IStrategoConstructor topsort_1;
+  private final IStrategoConstructor[] setup_3;
 
   private Descriptor parseCacheDescriptor;
   
@@ -70,11 +62,8 @@ public class FragmentParser {
   
   private boolean isLastSyntaxCorrect;
 
-  public FragmentParser(IStrategoConstructor setup_3, IStrategoConstructor topsort_1) {
-    assert setup_3.getArity() == 3;
-    assert topsort_1.getArity() == 1;
+  public FragmentParser(IStrategoConstructor... setup_3) {
     this.setup_3 = setup_3;
-    this.topsort_1 = topsort_1;
   }
 
   public void configure(Descriptor descriptor, IPath path, ISourceProject project, IStrategoTerm ast) {
@@ -168,15 +157,19 @@ public class FragmentParser {
     final List<FragmentRegion> results = new ArrayList<FragmentRegion>();
     new TermVisitor() {
       public void preVisit(IStrategoTerm term) {
-        if (tryGetConstructor(term) == setup_3) {
-          new TermVisitor() {
-            public final void preVisit(IStrategoTerm term) {
-              IStrategoConstructor constructor = tryGetConstructor(term);
-              if (constructor == INPUT_4 || constructor == OUTPUT_4) {
-                results.add(new FragmentRegion(term));
+        IStrategoConstructor constructor = tryGetConstructor(term);
+        for(IStrategoConstructor setup : setup_3) {
+          if (constructor == setup) {
+            new TermVisitor() {
+              public final void preVisit(IStrategoTerm term) {
+                IStrategoConstructor constructor = tryGetConstructor(term);
+                if (constructor == INPUT_4) {
+                  results.add(new FragmentRegion(term));
+                }
               }
-            }
-          }.visit(term);
+            }.visit(term);
+            return;
+          }
         }
       }
     }.visit(ast);

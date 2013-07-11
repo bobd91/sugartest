@@ -1,5 +1,6 @@
 package org.sugarj.test;
 
+import static org.sugarj.test.AstConstructors.QUOTEPART_1;
 import static org.spoofax.jsglr.client.imploder.AbstractTokenizer.findRightMostLayoutToken;
 import static org.spoofax.jsglr.client.imploder.AbstractTokenizer.getTokenAfter;
 import static org.spoofax.jsglr.client.imploder.IToken.TK_ESCAPE_OPERATOR;
@@ -13,7 +14,6 @@ import static org.spoofax.terms.attachments.ParentAttachment.getParent;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.spoofax.interpreter.terms.IStrategoConstructor;
 import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.spoofax.jsglr.client.imploder.IToken;
 import org.spoofax.jsglr.client.imploder.ITokenizer;
@@ -21,8 +21,6 @@ import org.spoofax.jsglr.client.imploder.ImploderAttachment;
 import org.spoofax.jsglr.client.imploder.Token;
 import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.terms.TermVisitor;
-import org.strategoxt.imp.runtime.Environment;
-import org.sugarj.common.Log;
 
 /** 
  * Copied from org.strategoxt.imp.testing.Retozenizer
@@ -30,9 +28,6 @@ import org.sugarj.common.Log;
  * @author Lennart Kats <lennart add lclnet.nl>
  */
 public class Retokenizer {
-	
-	private static final IStrategoConstructor QUOTEPART_1 =
-		Environment.getTermFactory().makeConstructor("QuotePart", 1);
 	
 	private final Tokenizer oldTokenizer;
 	

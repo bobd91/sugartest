@@ -67,7 +67,7 @@ class SugarJTestParser extends SugarJParser {
     IProject project = getController().getProject().getRawProject();
     org.sugarj.common.Environment env = SugarJParseController.makeProjectEnvironment(project);
     org.sugarj.common.path.Path testdir = new org.sugarj.common.path.RelativePath(env.getRoot(), ".sugartest");
-    env.setGenerateFiles(true);
+    env.setGenerateFiles(false);
     env.setBin(testdir);
     env.getSourcePath().add(testdir);
     return env;

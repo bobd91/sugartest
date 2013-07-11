@@ -1,10 +1,11 @@
 package org.sugarj.test;
 
-import static org.spoofax.interpreter.core.Tools.asJavaString;
-import static org.spoofax.interpreter.core.Tools.isTermString;
+import static org.sugarj.test.AstConstructors.FAILS_PARSING_0;
+import static org.sugarj.test.AstConstructors.SETUP_3;
+import static org.sugarj.test.AstConstructors.SUGAR_SETUP_3;
+import static org.sugarj.test.AstConstructors.OUTPUT_4;
+import static org.sugarj.test.AstConstructors.DESUGAR_4;
 import static org.spoofax.interpreter.core.Tools.listAt;
-import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
-import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getRightToken;
 import static org.spoofax.terms.Term.tryGetConstructor;
 import static org.spoofax.terms.attachments.ParentAttachment.getParent;
 
@@ -19,7 +20,6 @@ import org.spoofax.jsglr.client.imploder.ITokenizer;
 import org.spoofax.jsglr.client.imploder.ImploderAttachment;
 import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.terms.StrategoListIterator;
-import org.strategoxt.imp.runtime.Environment;
 
 /**
  * Keep track of the fragment text, and offsets
@@ -28,28 +28,7 @@ import org.strategoxt.imp.runtime.Environment;
  * 
  * @author Bob Davison
  */
-class Fragment {
-  
-  private static final IStrategoConstructor FAILS_PARSING_0 =
-      Environment.getTermFactory().makeConstructor("FailsParsing", 0);
-  
-  private static final IStrategoConstructor SETUP_3 =
-    Environment.getTermFactory().makeConstructor("Setup", 3);
-
-  private static final IStrategoConstructor TARGET_SETUP_3 =
-    Environment.getTermFactory().makeConstructor("TargetSetup", 3);
-
-  private static final IStrategoConstructor OUTPUT_4 =
-    Environment.getTermFactory().makeConstructor("Output", 4);
-  
-  private static final IStrategoConstructor QUOTEPART_1 =
-    Environment.getTermFactory().makeConstructor("QuotePart", 1);
-  
-  private static final IStrategoConstructor MARKED_TEST_NUMBER_3 =
-      Environment.getTermFactory().makeConstructor("MarkedTestNumber", 3);
-  
-  private static final int EXCLUSIVE = 1;
-    
+public class Fragment {
   private String input;
   private String output;
 
@@ -60,7 +39,7 @@ class Fragment {
   
   private boolean successExpected;
   
-  Fragment(String input, IStrategoTerm term, int testNumber, List<FragmentRegion> setupRegions) {
+  public Fragment(String input, IStrategoTerm term, int testNumber, List<FragmentRegion> setupRegions) {
     this.input = input;
     this.term = term;
     region = new FragmentRegion(term);    
@@ -117,66 +96,36 @@ class Fragment {
 
     for (FragmentRegion setup : setupRegions) {
       if (!addedFragment && setup.getStartOffset() >= region.getStartOffset()) {
-        appendFragment(region.getHead(), region.getTail(), input, testNumber, result);
+        appendFragment(region, input, testNumber, result);
         addedFragment = true;
       }
       if(setup.getStartOffset() != region.getStartOffset()) {
-        appendSetup(setup.getHead(), setup.getTail(), input, testNumber, result);
+        appendSetup(setup, input, testNumber, result);
       }
     }
     
     if (!addedFragment) {
-      appendFragment(region.getHead(), region.getTail(), input, testNumber, result);
+      appendFragment(region, input, testNumber, result);
     }
  
     output = result.toString(); 
   }
   
-   private void appendFragment(IStrategoTerm head, IStrategoTerm tail, String input, int testNumber, StringBuilder result) {
+   private void appendFragment(FragmentRegion reg, String input, int testNumber, StringBuilder result) {
     outputStart = result.length();
-    appendFragment(head, input, testNumber, result);
-    appendFragment(tail, input, testNumber, result);
+    result.append(reg.getText(input,  testNumber));
     outputEnd = result.length();
   }
   
-   private void appendSetup(IStrategoTerm head, IStrategoTerm tail, String input, int testNumber, StringBuilder result) {
-     appendFragment(head, input, testNumber, result);
-     appendFragment(tail, input, testNumber, result);
+   private void appendSetup(FragmentRegion reg, String input, int testNumber, StringBuilder result) {
+     result.append(reg.getText(input,  testNumber));
    }
 
-   private void appendFragment(IStrategoTerm term, String input, int testNumber, StringBuilder output) {
-    IToken left = getLeftToken(term);
-    IToken right = getRightToken(term);
-    if (tryGetConstructor(term) == QUOTEPART_1) {
-      output.append(input, left.getStartOffset(), right.getEndOffset() + EXCLUSIVE);
-    } else if(tryGetConstructor(term) == MARKED_TEST_NUMBER_3) {
-      output.append(formatTestNumber(testNumber, EXCLUSIVE + right.getEndOffset() - left.getStartOffset()));
-    } else if (isTermString(term)) {
-      // Brackets: treat as whitespace
-      assert asJavaString(term).length() <= 4 : "Bracket expected: " + term;
-      addWhitespace(input, left.getStartOffset(), right.getEndOffset(), output);
-    } else {
-      // Other: recurse
-      for (int i = 0; i < term.getSubtermCount(); i++) {
-        appendFragment(term.getSubterm(i), input, testNumber, output);
-      }
-    }
-  }
-  
-  private String formatTestNumber(int testNumber, int width) {
-    return (testNumber + new String(new char[width]).replace('\0', ' ')).substring(0,width);
-  }
-
-  private void addWhitespace(String input, int startOffset, int endOffset, StringBuilder output) {
-    for (int i = startOffset; i <= endOffset; i++)
-      output.append(input.charAt(i) == '\n' ? '\n' : ' ');
-  }
-
   private boolean isSuccessExpected() {
-    if (tryGetConstructor(term) == OUTPUT_4)
+    if (tryGetConstructor(term) == OUTPUT_4 || tryGetConstructor(term) == DESUGAR_4)
       return true;
     IStrategoAppl test = (IStrategoAppl) getParent(term);
-    if (test.getConstructor() == SETUP_3 || test.getConstructor() == TARGET_SETUP_3)
+    if (test.getConstructor() == SETUP_3 || test.getConstructor() == SUGAR_SETUP_3)
       return true;
     IStrategoList expectations = listAt(test, test.getSubtermCount() - 1);
     for (IStrategoTerm expectation : StrategoListIterator.iterable(expectations)) {
