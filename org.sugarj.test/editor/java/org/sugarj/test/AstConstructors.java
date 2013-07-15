@@ -26,9 +26,6 @@ public class AstConstructors {
   public static final IStrategoConstructor QUOTEPART_1 =
     Environment.getTermFactory().makeConstructor("QuotePart", 1);
   
-  public static final IStrategoConstructor MARKED_TEST_NUMBER_3 =
-    Environment.getTermFactory().makeConstructor("MarkedTestNumber", 3);
-
   public static final IStrategoConstructor ERROR_1 =
     Environment.getTermFactory().makeConstructor("Error", 1);
   

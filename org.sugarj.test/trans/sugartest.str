@@ -171,6 +171,12 @@ strategies
   	prim("SSL_EXT_origin_language", <id>)
 
 strategies
+  spt-ast-eq:
+  	(ast1, ast2) -> result
+  	where
+  	  result := <eq> ((<topdown(strip-annos)> ast1), (<topdown(strip-annos)> ast2))
+  	
+strategies
   
   external plugin-get-property-values(|language)
   

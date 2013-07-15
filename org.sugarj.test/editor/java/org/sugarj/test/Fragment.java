@@ -39,12 +39,12 @@ public class Fragment {
   
   private boolean successExpected;
   
-  public Fragment(String input, IStrategoTerm term, int testNumber, List<FragmentRegion> setupRegions) {
+  public Fragment(String input, IStrategoTerm term, List<FragmentRegion> setupRegions) {
     this.input = input;
     this.term = term;
     region = new FragmentRegion(term);    
     successExpected = isSuccessExpected();
-    createText(testNumber, setupRegions);
+    createText(setupRegions);
   }
   
   /**
@@ -90,35 +90,35 @@ public class Fragment {
     return parsed;
   }
   
- private void createText(int testNumber, List<FragmentRegion> setupRegions) {
+ private void createText(List<FragmentRegion> setupRegions) {
     StringBuilder result = new StringBuilder(input.length());
     boolean addedFragment = false;
 
     for (FragmentRegion setup : setupRegions) {
       if (!addedFragment && setup.getStartOffset() >= region.getStartOffset()) {
-        appendFragment(region, input, testNumber, result);
+        appendFragment(region, input, result);
         addedFragment = true;
       }
       if(setup.getStartOffset() != region.getStartOffset()) {
-        appendSetup(setup, input, testNumber, result);
+        appendSetup(setup, input, result);
       }
     }
     
     if (!addedFragment) {
-      appendFragment(region, input, testNumber, result);
+      appendFragment(region, input, result);
     }
  
     output = result.toString(); 
   }
   
-   private void appendFragment(FragmentRegion reg, String input, int testNumber, StringBuilder result) {
+   private void appendFragment(FragmentRegion reg, String input, StringBuilder result) {
     outputStart = result.length();
-    result.append(reg.getText(input,  testNumber));
+    result.append(reg.getText(input));
     outputEnd = result.length();
   }
   
-   private void appendSetup(FragmentRegion reg, String input, int testNumber, StringBuilder result) {
-     result.append(reg.getText(input,  testNumber));
+   private void appendSetup(FragmentRegion reg, String input, StringBuilder result) {
+     result.append(reg.getText(input));
    }
 
   private boolean isSuccessExpected() {

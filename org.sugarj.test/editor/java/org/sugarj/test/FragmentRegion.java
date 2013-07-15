@@ -1,7 +1,6 @@
 package org.sugarj.test;
 
 import static org.sugarj.test.AstConstructors.QUOTEPART_1;
-import static org.sugarj.test.AstConstructors.MARKED_TEST_NUMBER_3;
 import static org.spoofax.interpreter.core.Tools.asJavaString;
 import static org.spoofax.interpreter.core.Tools.isTermString;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
@@ -75,10 +74,10 @@ public class FragmentRegion {
     return tail;
   }
   
-  public String getText(String input, int testNumber) {
+  public String getText(String input) {
     StringBuilder output = new StringBuilder();
     for(SubRegion sub : subRegions) {
-      output.append(sub.getText(input, testNumber));
+      output.append(sub.getText(input));
     }
     return output.toString();
   }
@@ -88,9 +87,7 @@ public class FragmentRegion {
     IToken right = getRightToken(term);
     if (tryGetConstructor(term) == QUOTEPART_1) {
       subRegions.add(new TextSubRegion(left.getStartOffset(), right.getEndOffset()));
-    } else if(tryGetConstructor(term) == MARKED_TEST_NUMBER_3) {
-      subRegions.add(new TestNumberSubRegion(left.getStartOffset(), right.getEndOffset()));
-    } else if (isTermString(term)) {
+   } else if (isTermString(term)) {
       // Brackets: treat as whitespace
       assert asJavaString(term).length() <= 4 : "Bracket expected: " + term;
       subRegions.add(new WhitespaceSubRegion(left.getStartOffset(), right.getEndOffset()));
@@ -109,30 +106,15 @@ public class FragmentRegion {
       this.start = start;
       this.end = end;
     }
-    abstract String getText(String input, int testNumber);
-    
-    // Utility
-    static String spaces(int n) {
-      return new String(new char[n]).replace('\0', ' ');
-    }
-  }
+    abstract String getText(String input);
+ }
   
   static class TextSubRegion extends SubRegion {
     TextSubRegion(int start, int end) {
       super(start, end);
     }
-    String getText(String input, int testNumber) {
+    String getText(String input) {
       return input.substring(start, end + 1);
-    }
-  }
-  
-  static class TestNumberSubRegion extends SubRegion {
-    TestNumberSubRegion(int start, int end) {
-      super(start, end);
-    }
-    String getText(String input, int testNumber) {
-      int width = 1 + end - start;
-      return (testNumber + spaces(width)).substring(0,width);
     }
   }
   
@@ -140,9 +122,12 @@ public class FragmentRegion {
     WhitespaceSubRegion(int start, int end) {
       super(start, end);
     }
-    String getText(String input, int testNumber) {
+    String getText(String input) {
       int width = 1 + end - start;
       return spaces(width);
+    }
+    static String spaces(int n) {
+      return new String(new char[n]).replace('\0', ' ');
     }
   }  
 }

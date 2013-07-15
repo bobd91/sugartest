@@ -125,31 +125,33 @@ public class FragmentParser {
     return null;
   }
 
-  public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename, int testNumber)
+  public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename)
       throws TokenExpectedException, BadTokenException, SGLRException, IOException {
     
-    Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, testNumber, setupRegions);
-    IStrategoTerm parsed;
+    Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, setupRegions);
+    FragmentParseInfo parseInfo = FragmentParseInfo.cacheGet(filename, fragment);
 
-    SGLRParseController controller = parser.getController();
-    controller.getParseLock().lock();
-    try {
-      parsed = parser.parse(fragment.getText(), filename);
-    } finally {
-      controller.getParseLock().unlock();
-    }
+    if(parseInfo == null) {
+      IStrategoTerm parsed;
+      SGLRParseController controller = parser.getController();
+      controller.getParseLock().lock();
+      try {
+        parsed = parser.parse(fragment.getText(), filename);
+      } finally {
+        controller.getParseLock().unlock();
+      }
     
-    if(parsed == null) {
-      isLastSyntaxCorrect = false;
-      return fragmentTerm;
-    } else {
-      FragmentParseInfo info = new FragmentParseInfo(parsed);
-      isLastSyntaxCorrect = info.wasSyntaxCorrect();
-      if(!info.wasCached()) {
+      if(parsed == null) {
+        isLastSyntaxCorrect = false;
+        return fragmentTerm;
+      } else {
+        parseInfo = FragmentParseInfo.cacheAdd(filename, fragment, parsed);
         SourceAttachment.putSource(parsed, SourceAttachment.getResource(fragmentTerm), controller);
       }
-      return fragment.realign(parsed, info.originalTokenizer());
     }
+      
+    isLastSyntaxCorrect = parseInfo.isSyntaxCorrect();
+    return fragment.realign(parseInfo.getParsed(), parseInfo.originalTokenizer());
   }
 
   

@@ -97,29 +97,25 @@ public class SugarTestJSGLRI extends JSGLRI {
     
     IStrategoTerm result = new TermTransformer(factory, true) {
       
-      private int testNumber;
-      
       @Override
       public IStrategoTerm preTransform(IStrategoTerm term) {
         IStrategoConstructor cons = tryGetConstructor(term);
         FragmentParser parser = null;
-        String testFilename = null;
         
         if (cons == INPUT_4 || cons == OUTPUT_4) {
           parser = sugarParser;
-          testFilename = makeTestFilename(filename, language, ++testNumber);
         }
         else if (cons == DESUGAR_4) {
           parser = desugarParser;
-          testFilename = makeTestFilename(filename, language, ++testNumber);
         }
         
-        if (parser != null && testFilename != null) {
+        if (parser != null) {
           IStrategoTerm fragmentHead = termAt(term, 1);
           IStrategoTerm fragmentTail = termAt(term, 2);
           retokenizer.copyTokensUpToIndex(getLeftToken(fragmentHead).getIndex() - 1);
           try {
-            IStrategoTerm parsed = parser.parse(oldTokenizer, term, testFilename, testNumber);
+            String testFilename = makeTestFilename(filename, language);
+            IStrategoTerm parsed = parser.parse(oldTokenizer, term, testFilename);
             int oldFragmentEndIndex = getRightToken(fragmentTail).getIndex();
             retokenizer.copyTokensFromFragment(fragmentHead, fragmentTail, parsed,
                 getLeftToken(fragmentHead).getStartOffset(), getRightToken(fragmentTail).getEndOffset());
@@ -214,8 +210,8 @@ public class SugarTestJSGLRI extends JSGLRI {
     return sugarj;
   }
   
-  private String makeTestFilename(String filename, AbstractBaseLanguage language, int count) {
-    return FileCommands.dropExtension(filename) + count + "." + language.getSugarFileExtension();
+  private String makeTestFilename(String filename, AbstractBaseLanguage language) {
+    return FileCommands.dropExtension(filename) + "." + language.getSugarFileExtension();
   }
    
 }

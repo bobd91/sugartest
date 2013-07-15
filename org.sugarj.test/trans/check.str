@@ -207,9 +207,9 @@ rules
   check-expectation(|ast, selections, messages) :
     ParseOutput(_{^[output | _]}) -> $[Does not match pattern: [result]]
     where
-      not(<eq> (ast, output))
+      not(<spt-ast-eq> (ast, output))
     with
-      result := <spt-pp-string> ast
+      result := <spt-pp-aterm> ast
     <+
       result := $[[<write-to-html-string> ast] instead of [<write-to-html-string> ast]]
 
