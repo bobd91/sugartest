@@ -8,6 +8,7 @@ imports
   ATerms
   include/SugarTest
   libstratego-aterm
+  sugartest
 
 strategies
 
@@ -18,8 +19,8 @@ strategies
   aterm-eq(|p):
   	(term, ast) -> <id>
   	where
-      <aterm-eq> (<last> ast, p)
-
+  	  <aterm-eq> (appl(term, ast), p)
+  	    <+ <aterm-eq> (<last> ast, p)
 
   aterm-eq =
     aterm-appl0-to-fun
