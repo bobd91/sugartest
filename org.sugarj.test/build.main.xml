@@ -18,8 +18,9 @@
         <property name="dist" location="bin/dist"/>
         
         <!-- Imports -->
+	    <!-- ATerm.def should really come from http://github.com/metaborg/mb-rep -->
        <property name="build.sdf.imports" value="
-     	              -Idef &quot;${basedir}/../../../metaborg/mb-rep/org.strategoxt.imp.editors.aterm/syntax/ATerm.def&quot;"/>
+     	              -Idef &quot;${basedir}/org.strategoxt.imp.editors.aterm/syntax/ATerm.def&quot;"/>
       <property name="build.stratego.args" value="
                         --library
                         -I &quot;${trans}&quot;
