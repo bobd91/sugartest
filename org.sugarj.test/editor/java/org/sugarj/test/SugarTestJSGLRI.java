@@ -74,7 +74,7 @@ public class SugarTestJSGLRI extends JSGLRI {
   @Override
   protected IStrategoTerm doParse(String input, String filename)
       throws TokenExpectedException, BadTokenException, SGLRException,
-      IOException {
+      IOException, InterruptedException {
     IStrategoTerm ast = super.doParse(input, filename);
     return parseTestedFragments(ast, filename);
   }
@@ -126,16 +126,9 @@ public class SugarTestJSGLRI extends JSGLRI {
             term = factory.annotateTerm(term, nonParentFactory.makeListCons(parsed, selected));
             term.putAttachment(implodement.clone());
             retokenizer.skipTokensUpToIndex(oldFragmentEndIndex);
-          } catch (IOException e) {
-            Debug.log("Could not parse tested code fragment", e);
-          } catch (SGLRException e) {
-            // TODO: attach ErrorMessage(_) term with error?
-            Debug.log("Could not parse tested code fragment", e);
-          } catch (CloneNotSupportedException e) {
+          } catch (Exception e) {
             Environment.logException("Could not parse tested code fragment", e);
-          } catch (RuntimeException e) {
-            Environment.logException("Could not parse tested code fragment", e);
-          }
+          } 
         }
         return term;
       }

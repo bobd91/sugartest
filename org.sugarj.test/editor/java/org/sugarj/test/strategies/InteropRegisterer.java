@@ -26,6 +26,7 @@ package org.sugarj.test.strategies;
         		   parse_spt_file_0_1.instance,
         		   get_completion_input_term_0_1.instance,
         		   is_sugar_language_0_1.instance,
+        		   get_desugared_ast_0_1.instance,
         		   sugar_log_0_1.instance
            			});
          }

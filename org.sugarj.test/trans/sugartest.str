@@ -87,23 +87,31 @@ rules
     (QuotePart(_), position, ast, _, _) -> hover
     where
       _{ast2} := <parent-at-position(|position)> ast;
-      hover := <spt-pp-aterm ; hover-input-string>ast2
+      hover := <hover-output> ast2
 
-  hover-input-string =
+  hover-output =
   	if ?error(_, _) then
       extract-parse-error
     else 
-      !$[The input string currently result in the following AST:<br />
-         <br />
-         <b>
-           <pre>
-             [<id>]
-           </pre>
-         </b>
+      !$[The input string currently results in the following AST: 
+          [<sugt-format-ast>]
         ]
     end 
 
-  spt-pp-aterm =
+  sugt-format-ast =
+    sugt-pp-aterm ; sugt-html-ast
+    
+  sugt-html-ast =
+    !$[<br />
+       <br />
+       <b>
+        <pre>
+          [<id>]
+        </pre>
+       </b>
+      ]
+     
+  sugt-pp-aterm =
     topdown(strip-annos) ; pp-aterm-box ; box2text-string(|80)
     
   //external input-dialog(|title, message, initial)
@@ -171,7 +179,7 @@ strategies
   	prim("SSL_EXT_origin_language", <id>)
 
 strategies
-  spt-ast-eq:
+  sugt-ast-eq:
   	(ast1, ast2) -> result
   	where
   	  result := <eq> ((<topdown(strip-annos)> ast1), (<topdown(strip-annos)> ast2))
@@ -220,6 +228,7 @@ strategies
   
   spt-exists-language(|language) =
     where(is-sugar-language(|language))
+
   
   spt-get-default-language =
     <readdir> $[[<project-path>]/include]
@@ -273,5 +282,7 @@ strategies
   external get-service-input-term-refactoring(|analyzed-ast)
   
   external is-sugar-language(|language)
+  
+  external get-desugared-ast(|ast)
   
   external sugar-log(|ast)

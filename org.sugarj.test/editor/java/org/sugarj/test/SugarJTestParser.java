@@ -15,6 +15,7 @@ import org.sugarj.common.FileCommands;
 import org.sugarj.common.Log;
 import org.sugarj.common.path.RelativePath;
 import org.sugarj.driver.Driver;
+import org.sugarj.driver.Result;
 import org.sugarj.editor.SugarJConsole;
 import org.sugarj.editor.SugarJParseController;
 import org.sugarj.editor.SugarJParser;
@@ -38,14 +39,18 @@ class SugarJTestParser extends SugarJParser {
   public IStrategoTerm doParse(String input, String filename) throws IOException {
     AbstractBaseLanguage baseLanguage = BaseLanguageRegistry.getInstance().getBaseLanguage(FileCommands.getExtension(filename));
     if(baseLanguage == null) {
-      // SugarTestJSGLRI sets the files extension so this should never happen 
+      // SugarTestJSGLRI sets the file extension so this should never happen 
       throw new RuntimeException("Unknown source-file extension " + FileCommands.getExtension(filename));
     }
     
     prepareConsole();
     
     try {
-       return Driver.run(input, makeRelative(filename), environment, new NullProgressMonitor(), baseLanguage).getSugaredSyntaxTree();
+       Result result = Driver.run(input, makeRelative(filename), environment, new NullProgressMonitor(), baseLanguage);
+       IStrategoTerm sugared = result.getSugaredSyntaxTree();
+       if(sugared != null)
+         SugarTestAttachment.put(sugared,  result.getDesugaredSyntaxTree());
+       return sugared;
     } catch(IOException ioe) {
       throw(ioe);
     } catch(Exception e) {
@@ -66,10 +71,7 @@ class SugarJTestParser extends SugarJParser {
   private Environment makeTestEnvironment() {
     IProject project = getController().getProject().getRawProject();
     org.sugarj.common.Environment env = SugarJParseController.makeProjectEnvironment(project);
-    org.sugarj.common.path.Path testdir = new org.sugarj.common.path.RelativePath(env.getRoot(), ".sugartest");
     env.setGenerateFiles(false);
-    env.setBin(testdir);
-    env.getSourcePath().add(testdir);
     return env;
   }
   

@@ -4,25 +4,18 @@ import static org.spoofax.interpreter.core.Tools.isTermString;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.imp.language.Language;
 import org.eclipse.imp.language.LanguageRegistry;
 import org.eclipse.imp.model.ISourceProject;
 import org.eclipse.imp.model.ModelFactory;
 import org.eclipse.imp.parser.IParseController;
 import org.spoofax.interpreter.terms.IStrategoString;
 import org.spoofax.interpreter.terms.IStrategoTerm;
-import org.spoofax.jsglr.shared.BadTokenException;
-import org.spoofax.jsglr.shared.SGLRException;
-import org.spoofax.jsglr.shared.TokenExpectedException;
 import org.strategoxt.imp.runtime.Environment;
-import org.strategoxt.imp.runtime.dynamicloading.BadDescriptorException;
 import org.strategoxt.imp.runtime.dynamicloading.Descriptor;
 import org.strategoxt.imp.runtime.dynamicloading.DynamicParseController;
 import org.strategoxt.imp.runtime.parser.JSGLRI;
@@ -71,18 +64,9 @@ public class parse_spt_file_0_1 extends Strategy {
 					sglrController.getParseLock().unlock();
 				}
 			}
-		} catch (BadDescriptorException e) {
+		} catch (Exception e) {
 			Environment.logException("Could not parse testing string", e);
-		} catch (TokenExpectedException e) {
-			Environment.logException("Could not parse testing string", e);
-		} catch (BadTokenException e) {
-			Environment.logException("Could not parse testing string", e);
-		} catch (SGLRException e) {
-			Environment.logException("Could not parse testing string", e);
-		} catch (IOException e) {
-			Environment.logException("Could not parse testing string", e);
-		}
-		
+		} 		
 		return result;
 	}
 	

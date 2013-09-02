@@ -126,7 +126,8 @@ public class FragmentParser {
   }
 
   public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename)
-      throws TokenExpectedException, BadTokenException, SGLRException, IOException {
+      throws TokenExpectedException, BadTokenException, SGLRException
+      , IOException, InterruptedException {
     
     Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, setupRegions);
     FragmentParseInfo parseInfo = FragmentParseInfo.cacheGet(filename, fragment);

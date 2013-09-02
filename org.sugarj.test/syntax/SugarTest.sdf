@@ -64,11 +64,18 @@ exports
     "parse" "to" ATerm   -> Result {cons("pattern")}
     "parse" "to" Output   -> Result {cons("ParseOutput")}
     
+    %% added for SugarJ testing
     "parse" "contains" ATerm -> Result {cons("containspattern")}
+	  %%
 
     "parse" "fails"      -> Result {cons("FailsParsing")}
     "parse" "succeeds"   -> Result {cons("SuccessParsing"), prefer}
     "parse"              -> Result {cons("SuccessParsing")}
+
+    %% added for SugarJ testing
+    "desugar" "to" Desugar -> Result {cons("ParseDesugar")}
+	  %%
+
 
     "file" PathName -> Input {cons("file")}
 
@@ -143,7 +150,12 @@ context-free syntax
     <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Output-CF> {cons("Output")}
     <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Output-CF> {cons("Output")}
     
-                                                      -> <TailParts2-CF> {cons("Done")}
+    %% added for SugarJ testing
+    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-CF> -> <Desugar-CF> {cons("Desugar")}
+    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Desugar-CF> {cons("Desugar")}
+    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Desugar-CF> {cons("Desugar")}
+	  %%
+	                                                    -> <TailParts2-CF> {cons("Done")}
     <MarkedPart2-CF> <StringPart2-CF> <TailParts2-CF> -> <TailParts2-CF> {cons("More")}
                                                       -> <TailParts3-CF> {cons("Done")}
     <MarkedPart3-CF> <StringPart3-CF> <TailParts3-CF> -> <TailParts3-CF> {cons("More")}
