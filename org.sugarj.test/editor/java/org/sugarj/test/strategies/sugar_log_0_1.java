@@ -6,6 +6,8 @@ import org.strategoxt.lang.Strategy;
 import org.sugarj.common.Log;
 
 /**
+ * Useful for debugging
+ * 
  * @author Bob Davison
  */
 public class sugar_log_0_1 extends Strategy {

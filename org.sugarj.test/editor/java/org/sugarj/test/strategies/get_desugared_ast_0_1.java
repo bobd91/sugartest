@@ -6,6 +6,10 @@ import org.strategoxt.lang.Strategy;
 import org.sugarj.test.SugarTestAttachment;
 
 /**
+ * Gets the desugared syntax tree from the current ast
+ * 
+ * The desugared synatx tree is attached by SugarJTestParser
+ * 
  * @author Bob Davison
  */
 public class get_desugared_ast_0_1 extends Strategy {

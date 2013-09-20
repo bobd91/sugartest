@@ -9,7 +9,10 @@ import org.spoofax.terms.attachments.VolatileTermAttachmentType;
 
 
 /**
- * Attachment to hold desugared ast
+ * Attachment to hold the desugared ast
+ * 
+ * The desugared ast is used by Stratego code to compare
+ * Sugar input against expected desugared output
  * 
  * @author Bob Davison
  *

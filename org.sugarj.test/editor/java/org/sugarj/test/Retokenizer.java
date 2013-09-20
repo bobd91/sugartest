@@ -23,7 +23,7 @@ import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.terms.TermVisitor;
 
 /** 
- * Copied from org.strategoxt.imp.testing.Retozenizer
+ * Copied from org.strategoxt.imp.testing.Retokenizer
  * 
  * @author Lennart Kats <lennart add lclnet.nl>
  */

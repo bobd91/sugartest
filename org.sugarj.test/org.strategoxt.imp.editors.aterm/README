@@ -1,1 +1,3 @@
-org.strategoxr.imp.editors.aterm/syntax/ATerm.def comes from http://github.com/metaborg/mb-rep
+org.strategoxr.imp.editors.aterm/syntax/ATerm.def is required for the build
+
+It comes from http://github.com/metaborg/mb-rep

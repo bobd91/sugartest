@@ -31,9 +31,10 @@ import org.sugarj.editor.SugarJParser;
  * Heavily modified copy of org.strategoxt.imp.testing.FragmentParser
  * for testing SugarJ languages
  * 
- * Removed all parse result caching as SugarJ Driver does caching for us, and it tracks changes to dependent files
+ * Removed all parse result caching as it didn't work, caching is done by FragmentParseInfo
  * 
- * Modify fragment handling so that SugarJ doesn't have to keep re-compiling the same code just because of differences in whitespace
+ * Modify fragment handling so that SugarJ doesn't have to keep re-compiling the same code
+ * just because of differences in whitespace
  * 
  * @author Lennart Kats <lennart add lclnet.nl>
  * @author Bob Davison

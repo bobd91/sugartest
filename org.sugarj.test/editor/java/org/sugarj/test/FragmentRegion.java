@@ -19,8 +19,9 @@ import org.spoofax.jsglr.client.imploder.IToken;
  * Added start line and column as required to restore original token positions
  * Also store fragment head and tail
  * 
- * Collect info on subregions so that text can be recovered, needed as setup fragments may have different tokens
- * after the first parse and so using tokens to find setup text after the first parse does not work
+ * Collect info on subregions so that text can be recovered, 
+ * needed as setup fragments may have different tokens after the first parse
+ * and so using tokens to find setup text after the first parse does not work
  *
  * @author Lennart Kats <lennart add lclnet.nl>
  * @author Bob Davison

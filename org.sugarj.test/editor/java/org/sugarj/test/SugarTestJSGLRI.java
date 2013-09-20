@@ -51,6 +51,9 @@ import org.sugarj.common.FileCommands;
  * Slightly modified copy of org.strategoxt.imp.testing.SpoofaxTestingJSGLRI
  * for testing SugarJ languages
  * 
+ * Parses text using SugarTest grammar then parses test fragments 
+ * against the specified SugarJ language
+ * 
  * @author Bob Davison
  *
  */

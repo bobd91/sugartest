@@ -8,6 +8,8 @@ import org.strategoxt.lang.Strategy;
 import org.sugarj.BaseLanguageRegistry;
 
 /**
+ * Test if the specified language is a registered SugarJ language
+ * 
  * @author Bob Davison
  */
 public class is_sugar_language_0_1 extends Strategy {

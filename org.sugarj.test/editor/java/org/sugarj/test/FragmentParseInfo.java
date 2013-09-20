@@ -12,11 +12,7 @@ import org.spoofax.jsglr.client.imploder.ITokenizer;
 import org.spoofax.jsglr.client.imploder.Tokenizer;
 
 /**
- * Keep track of fragment parse info across parses.
- * 
- * SugarJ caches parse results some of which are then compromised by the test framework.
- * This class attaches a SugarTestAttachment to the parse results so that the original, uncompromised,
- * results can be retrieved 
+ * Cache information on parses.
  * 
  * @author Bob Davison
  *
@@ -56,6 +52,9 @@ public class FragmentParseInfo {
     return info;
   }
   
+  /*
+   * The MRU cache
+   */
   static class ParseCache extends LinkedHashMap<ParseCacheKey, SoftReference<FragmentParseInfo>> {
 
     private static final long serialVersionUID = -510754665005651197L;
@@ -89,6 +88,9 @@ public class FragmentParseInfo {
 
   }
   
+  /*
+   * The key for the cache
+   */
   static class ParseCacheKey {
     private String filename;
     private String fragmentText;

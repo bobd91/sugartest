@@ -12,6 +12,8 @@ imports
   generate
   file-resolving
   test-runner
+  editor/SugarTest-Outliner.str
+  
 rules
     
   editor-analyze:

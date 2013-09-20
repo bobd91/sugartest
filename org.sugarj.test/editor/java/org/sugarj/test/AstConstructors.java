@@ -1,5 +1,8 @@
 package org.sugarj.test;
 
+/**
+ * Shared access to AST Constructors 
+ */
 import org.spoofax.interpreter.terms.IStrategoConstructor;
 import org.strategoxt.imp.runtime.Environment;
 

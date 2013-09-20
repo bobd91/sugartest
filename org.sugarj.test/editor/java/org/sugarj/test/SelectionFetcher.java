@@ -21,9 +21,6 @@ import org.strategoxt.imp.runtime.stratego.StrategoTermPath;
 /**
  * Copied from org.strategoxt.imp.testing.SelectionFetcher
  * 
- * Lamely-named class for fetching selections in test
- * fragment (e.g., foo in [[ module [[foo]] ]]). 
- * 
  * @author Lennart Kats <lennart add lclnet.nl>
  */
 public class SelectionFetcher {
