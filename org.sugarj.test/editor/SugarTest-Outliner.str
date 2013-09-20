@@ -1,0 +1,11 @@
+module editor/SugarTest-Outliner
+
+imports
+  include/SugarTest
+  lib/runtime/editor/outline-library
+  lib/runtime/editor/origins
+  editor/SugarTest-Outliner.generated
+
+rules
+  
+  outline-expand-to-level = !3
