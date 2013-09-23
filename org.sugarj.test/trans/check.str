@@ -7,10 +7,7 @@ imports
   lib/editor-common.generated
   aterm-eq
   sugartest
-  file-resolving
-  check-resolve
-  check-complete
-  check-builders
+
 
 signature constructors
   error : Term * Term -> Term
@@ -19,88 +16,15 @@ signature constructors
   
 rules
   
-  spt-desugar:
-    Error(n) -> Errors(n)
-  
-  spt-desugar:
-    Warning(n) -> Warnings(n)
 
-  spt-desugar:
-    Note(n) -> Notes(n)
-
-  spt-desugar:
-    Fatal(n) -> Fatals(n)
-
-  spt-desugar-refactoring-conditions =
-    at-suffix-rev(spt-desugar-refactor-expectations)
-
-  spt-desugar-refactor-expectations:
-  	[Refactor(strategy, arg, expected-ast)|expectations] -> 
-  	[Refactor(strategy, arg, (expected-ast, refactor-expectations))]
-  	where
-  		zeros := [Fatals("0"), Errors("0"), Warnings("0")]; //TODO Fatals(0)
-  		refactor-expectations := 
-  			<union(?(Errors(_), Errors(_)) <+ ?(Warnings(_), Warnings(_)) <+ ?(Fatals(_), Fatals(_)))> (zeros, expectations)
-  
-  check-note = fail
-  
   check-error:
     Test(_, d, _, c*) -> (d, "Combination of test conditions is not supported")
     where
       // Base case: can never have > 1 condition
       <gt> (<length> c*, 1)
-    where
-      // Exception: composable conditions (doesn't apply to combination of errors/warnings/notes)
-      if not(<is-combined-errors-condition> c*) then
-        not(<all(is-composable-semantic-condition)> c*)
-      end
-    where
-      // Exception: completion conditions compose together
-      not(<all(is-completion-test)> c*)
-    where
-      // Exception: parse conditions compose together
-      not(<all(is-parse-only-test)> c*)
-    where
-      // Exception: we allow conditions like '1 error refactor ... 2 errors'
-      not(<one(?Refactor(_, _, _))> c*)
 
-  // Errors and warnings don't work together ... yet
-  is-combined-errors-condition =
-    one(?Errors(_));
-    one(?Warnings(_))
-  <+
-    one(?Errors(_) + ?Warnings(_));
-    one(?Notes(_))
-         
-
-  is-composable-semantic-condition =
-    ?RegexPattern(_) + ?Refactor(_, _, _) + ?Build(_, _, _) + ?Run(_, _, _)
-  + ?Resolve(_) + ?ResolveTo(_, _)
-  + ?Errors(_) + ?Warnings(_) + ?Notes(_) + ?Fails() + ?SuccessParsing()
-
-  is-completion-test =
-    ?Complete(_) + ?CompleteTo(_, _)
-
-  check-warning:
-    Test(_, d, _, [r @ Refactor(_,_,(wildcard(), [_ | _]))]) ->
-    (r, "Specify a pattern 'to _' for this refactoring")
-    // (avoid confusion: conditions after refactoring apply to output pattern)
-  
-  check-error:
-    Notes(_) -> (<id>, "Not implemented")
-  
   check-error:
     TestEmpty(_, d) -> (<id>, "Empty test case")
-  
-  check-error:
-    CompletionHelper(_) -> (<id>, "Syntax error")
-  
-  /*
-  check-error:
-    Test(_, d, _, expectations) -> (d, $[No observer defined for [<Language>]])
-    where
-      not(spt-get-observer)
-  */
   
   check-error:
     MarkedPlaceholder(_, _, _) -> (<id>, ${Placeholders of the form [[...]] are not yet supported; 
@@ -114,7 +38,7 @@ rules
         // TODO: set starting directory to project path using invoke-plugin-strategy
         plugin-strategy-invoke(|<Language>, "editor-init")
       ; input'     := (input, <InputFile>, <project-path>)
-      ; messages   := <plugin-strategy-invoke(|<Language>, <spt-get-observer>) <+ !([], [], [])> input'
+      ; messages   := <plugin-strategy-invoke(|<Language>, <sugt-get-observer>) <+ !([], [], [])> input'
       ; messages'  := <strip-and-record-analyzed-ast <+ reset-analyzed-ast(|input)> <try(?Some(<id>))> messages
       ; messages'' := <try((flatten-list, flatten-list, flatten-list))> messages'
       else
@@ -125,7 +49,7 @@ rules
       else
         warnings := <filter(check-expectation(|input, selections, messages''))> expectations
       end
-    ; where(spt-index-clear-file)
+    ; where(sugt-index-clear-file)
     ; not([]) 
    
   strip-and-record-analyzed-ast:
@@ -138,9 +62,7 @@ rules
 
   external plugin-strategy-invoke(|language, name)
   
-  Test-get-input :
-    file(f) -> (<resolve-path(|<current-path>) ; read-text-file ; spt-parse-string>f, [])
-    
+   
   Test-get-input :
     Input(_,_,_,_){a*} -> (parsed', selections)
     where
@@ -167,12 +89,6 @@ rules
   
   extract-parse-error =
     ?error(_, [localized(<id>, _) | _])
-
-  check-expectation(|ast, selections, messages) :
-    <not(Fails)> -> $[Observer fails: [details]]
-    where
-      !messages => Fail(details);
-      say(!details)
 
   check-expectation(|ast, selections, messages) :
     _ -> $[Observer error: [details]]
@@ -235,94 +151,11 @@ rules
     <+
       result := $[[<write-to-html-string> desugared] instead of [<write-to-html-string> output]]
 
-  check-expectation(|ast, selections, messages) :
-    file(f) -> $[Does not match pattern: 
-      [<sugt-format-ast> ast]
-    ]
-    where
-      exploded := <explode-aterm> ast
-    ; p := <resolve-path(|<current-path>); ReadFromFile; explode-aterm> f
-    ; not(<aterm-eq> (exploded, p))
-
-  check-expectation(|ast, selections, messages) :
-    <not(is-semantic-failure-allowed)> -> $[Unexpected message(s): 
-      [<grab-messages> messages]
-    ]
-    where
-      not(!messages => ([], [], _))
-  
-  is-semantic-failure-allowed =
-    Fails() + ?Errors(_) + ?Warnings(_) + ?CompleteTo(_, _) + ?RegexPattern(_)
-
-  check-expectation(|ast, selections, messages) :
-    Errors(n) -> $[[n] error(s) expected: 
-      [<grab-errors> messages]
-    ]
-    where
-      !messages => (errors, _, _)
-    ; not(<eq> (<length> errors, <string-to-int> n))
-
-  check-expectation(|ast, selections, messages) :
-    Warnings(n) -> $[[n] warning(s) expected: 
-      [<grab-warnings> messages]
-    ]
-    where
-      !messages => ([], warnings, _)
-    ; not(<eq> (<length> warnings, <string-to-int> n))
-
-  check-expectation(|ast, selections, messages) :
-    Warnings(n) -> $[No error(s) expected: 
-      [<grab-errors> messages]
-    ]
-    where
-      !messages => ([_ | _], _, _)
-  
-  check-expectation(|ast, selections, messages) :
-    <?Errors(_) + ?Warnings(_) + ?Notes(_) + ?RegexPattern(_)> -> $[Error/warning/note marker expected at selection(s)]
-    with
-      !messages => (errors, warnings, notes);
-      all-messages := <conc> (errors, warnings, notes)
-    where
-      bad-selections := <filter(not(is-grabbed-message(|all-messages)))> selections;
-      not(!bad-selections => [])
-    with
-      bad-selections' := <map(!(<id>, $[No error/warning/note marker]))> bad-selections;
-      <grab-messages> messages; // show messages in editor
-      rules(GrabbedNotes :+= bad-selections')
-
-  check-error :
-    VarDecl(_, _) -> (<id>, $[Not implemented: [<write-to-html-string>]])
-  
-  check-error :
-    RegexPattern(r) -> (r, $[Full regular expression support not implemented])
-    where
-      not(simple-regex-to-string)
-
-  check-expectation(|ast, selection, messages) :
-    RegexPattern(r) -> $[Messages do not match "[r']": [<grab-messages> messages]]
-    where
-      r'  := <simple-regex-to-string>;
-      r'' := <lower-case> r';
-      not(<oncetd(match-message(|r''))> messages)
-
   match-message(|r):
     (term, message) -> <id>
     where
       message' := <lower-case> <try(concat-strings)> message;
       <is-substring(!r)> message'
-  
-  simple-regex-to-string:
-    RegexPattern(SingleBranch(Pieces(p*))) -> string
-    where
-      p'*    := <map(simple-regex-atom-to-string)> p*;
-      // string := <concat-strings> p'*
-      string := <origin-text> p*
-  
-  simple-regex-atom-to-string:
-    SingleAtom(AtomLiteral(s)) -> s
-  
-  simple-regex-atom-to-string:
-    SingleAtom(AtomCharacter(Quoted(s))) -> s
   
   is-parse-only-test =
     SuccessParsing + FailsParsing + ?pattern(_) + ?ParseOutput(_)

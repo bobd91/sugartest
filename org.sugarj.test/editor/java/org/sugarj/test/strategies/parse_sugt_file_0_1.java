@@ -30,9 +30,9 @@ import org.strategoxt.lang.Strategy;
  * The current term is the name of the file to parse and the subsequemnt argument is the name 
  * of the project containing the file
  */
-public class parse_spt_file_0_1 extends Strategy {
+public class parse_sugt_file_0_1 extends Strategy {
 
-	public static parse_spt_file_0_1 instance = new parse_spt_file_0_1();
+	public static parse_sugt_file_0_1 instance = new parse_sugt_file_0_1();
 	
 	@Override
 	public IStrategoTerm invoke(Context context, IStrategoTerm current, IStrategoTerm projectName) {

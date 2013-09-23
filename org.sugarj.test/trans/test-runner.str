@@ -49,8 +49,8 @@ strategies
 
   run-testsuite(|project-path) =
   	file := <id>
-    ; ast  := <parse-spt-file(|project-path)>
-    ; ast' := <topdown(repeat(spt-desugar)); alltd(spt-desugar-refactoring-conditions)> ast 
+    ; ast  := <parse-sugt-file(|project-path)>
+    ; ast' := ast 
     ; testcases := <collect-all(testlistener-add-testcase(|file, <test-to-description>,<origin-offset;Fst>))>ast'
     ; <map(run-testcase(|file))>testcases
   
@@ -73,6 +73,6 @@ strategies
   external testlistener-add-testcase(|testsuite, description, linenr)
   external testlistener-start-testcase(|testsuite, description)
   external testlistener-finish-testcase(|testsuite, description, result)
-  external parse-spt-file(|project-path)
+  external parse-sugt-file(|project-path)
     
   

@@ -9,8 +9,8 @@ compare-desugared-asts:
 	
 compare-ast =
   compare-ast-eq <+
-  compare-ast-rec <+
-  compare-ast-resugar-expected 
+  compare-ast-rec /*<+
+  compare-ast-resugar-expected*/ 
   
 compare-ast-eq:
   (expected, result) -> (expected, result)
@@ -23,34 +23,3 @@ compare-ast-rec:
   	<?c#(expected-args)> expected;
   	<?c#(result-args)> result;
   	<zip; map(compare-ast)> (expected-args, result-args)
-
-compare-ast-resugar-expected:
-  (expected, result) -> (expected, result)
-  where
-  	//<is-origin-term-desugared> expected;
-  	<not(is-origin-term)> expected;
-  	<not(same-signature)> (expected, result);
-  	sugared-c#(sugared-args) := <origin-term> expected;
-  	mixed-args := <map(try(lookup-desugared(|expected)))> sugared-args; 
-  	<compare-ast> (sugared-c#(mixed-args), result) 
-  	//TODO: we assume that 'expected' is a desugared origin. 
-
-lookup-desugared(|desugared-term):
-	subtrm -> desugared-subtrm
-	where
-		  <oncetd(
-		  	desugared-subtrm := <where(origin-term; equal(|subtrm))>
-		  )> desugared-term
-		
-
-same-signature:
-  (expected, result) -> (expected, result)
-  where
-  	<?c#(expected-args)> expected;
-  	<?c#(result-args)> result;
-  	<zip> (expected-args, result-args)
-	  	
-origin-term = prim("SSL_EXT_origin_term", <id>)
-is-origin-term = <equal> (<origin-term>, <id>)
-//origin-term-desugared = prim("SSL_EXT_origin_term_desugared", <id>)
-//is-origin-term-desugared = <equal> (<origin-term-desugared>, <id>)
