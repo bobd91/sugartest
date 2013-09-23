@@ -9,7 +9,7 @@ exports
   context-free start-symbols TestSuite
 
 exports
-  sorts TestSuite TopSort Test Input Result
+  sorts TestSuite Test Input Output Desugar Result
   context-free syntax
     Header TestDecl*   -> TestSuite {cons("testsuite")}
     "language" ID      -> Header {cons("Language")}

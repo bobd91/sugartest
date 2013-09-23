@@ -9,3 +9,8 @@ imports
 rules
   
   outline-expand-to-level = !3
+
+  to-outline-label: Setup(_,description(d),_) -> $[Setup [d]]
+  to-outline-label: Test(_,description(d),_,_) -> $[Test [d]]
+
+  
