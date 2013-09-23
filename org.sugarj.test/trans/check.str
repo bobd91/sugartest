@@ -129,6 +129,14 @@ rules
     ; not(<aterm-contains(|p)> exploded)
 
   check-expectation(|ast, selections, messages) :
+    desugarcontainspattern(p) -> $[Does not contain pattern: 
+      [<get-desugared-ast(|<id>) ; sugt-format-ast> ast]
+    ]
+    where
+      exploded := <get-desugared-ast(|<id>) ; topdown(strip-annos) ; explode-aterm> ast
+    ; not(<aterm-contains(|p)> exploded)
+
+  check-expectation(|ast, selections, messages) :
     ParseOutput(_{^[output | _]}) -> $[Does not match expected: 
       [result]
     ]

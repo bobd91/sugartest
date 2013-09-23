@@ -46,6 +46,7 @@ exports
     "parse"              -> Result {cons("SuccessParsing")}
 
     "desugar" "to" Desugar -> Result {cons("ParseDesugar")}
+    "desugar" "contains" ATerm -> Result {cons("desugarcontainspattern")}
 	
     
     %% Handle a couple of lousy recoveries
