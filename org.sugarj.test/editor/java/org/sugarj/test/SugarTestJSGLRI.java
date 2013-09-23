@@ -162,14 +162,10 @@ public class SugarTestJSGLRI extends JSGLRI {
   }
 
   private String getLanguageName(IStrategoTerm root, IStrategoConstructor which) {
-    if (root.getSubtermCount() < 1 || !isTermList(termAt(root, 0)))
-      return null;
-    IStrategoList headers = termAt(root, 0);
-    for (IStrategoTerm header : StrategoListIterator.iterable(headers)) {
-      if (tryGetConstructor(header) == which) {
-        IStrategoString name = termAt(header, 0);
-        return asJavaString(name);
-      }
+    IStrategoTerm header = termAt(root, 0);
+    if (tryGetConstructor(header) == which) {
+      IStrategoString name = termAt(header, 0);
+      return asJavaString(name);
     }
     return null;
   }
