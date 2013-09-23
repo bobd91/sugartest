@@ -8,7 +8,6 @@ imports
   include/SugarTest
   lib/editor-common.generated
   check
-  generate
   test-runner
   editor/SugarTest-Outliner
   
@@ -53,14 +52,11 @@ rules
  get-language:
     testsuite(Language(language), _) -> language
 
-  generate-java:
-    (selected, position, ast, path, project-path) -> result
-    with
-      scope-paths( result := <to-java(|<base-filename> path)> selected | path, project-path)
-  
+ 
   generate-aterm:
-    (selected, position, ast, path, project-path) -> (filename, selected)
+    (selected, position, ast, path, project-path) -> (filename, selected')
     with
+      selected' := <topdown(strip-annos)> selected ;
       filename := <guarantee-extension(|"aterm")> path
 
   editor-hover:
