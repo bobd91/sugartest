@@ -4,21 +4,12 @@ module SugarTest-Builders
 imports SugarTest-Builders.generated
 
 builders
-                                                                      
-  // This file can be used for custom analysis and builder rules.     
-  //                                                                  
-  // See the imported file for a brief introduction and examples.     
-
-builders
-  // on save  : generate-artifacts  
+ 
   provider : include/sugartest.ctree                                                                                                                           
   provider : include/sugartest-java.jar                                                                 
                                                                                                                                
   observer : editor-analyze                                                                                   
                                                                                                                                
   builder  : "Show abstract syntax (for selection)"          = generate-aterm (openeditor) (realtime) (source) // (meta) 
-  builder  : "Generate missing output file with current AST" = generate-ast-file (cursor)              
-  builder  : "Run testsuites" = test-runner
   builder  : "Run testsuite (current file)" = test-runner-file
-                                                                                                                               
-  //on save : generate-java                                                                                                      
+  builder  : "Run testsuites" = test-runner
