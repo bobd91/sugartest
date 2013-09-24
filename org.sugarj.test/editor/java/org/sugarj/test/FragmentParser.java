@@ -2,6 +2,7 @@ package org.sugarj.test;
 
 import static org.sugarj.test.AstConstructors.INPUT_4;
 import static org.spoofax.terms.Term.tryGetConstructor;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,15 +45,6 @@ public class FragmentParser {
   
   private static final int FRAGMENT_PARSE_TIMEOUT = 3000;
   
-  /**
-   * HACK: edit/save on same file avoids the Spoofax
-   * parse lock as different ParseControllers are used.
-   * We must avoid parallel parses of the same file as SugarJ
-   * will interrupt one of the parses causing errors on good tests.
-   * Force the use of a single parser for each file so we can parse lock.
-   */
-  private static Map<IPath, JSGLRI> parsers = new HashMap<IPath, JSGLRI>();
-
   private final IStrategoConstructor[] setup_3;
 
   private Descriptor parseCacheDescriptor;
@@ -62,6 +54,16 @@ public class FragmentParser {
   private List<FragmentRegion> setupRegions;
   
   private boolean isLastSyntaxCorrect;
+  
+  /*
+   * Mustn't use controller.getParseLock().lock()
+   * as edit/save use different controllers permitting simultaneous parses of the
+   * same file.  SugarJ will interrupt one of the parses causing
+   * parse failure on a possibly good file.
+   * 
+   * Use a lock based on the name of the file being edited
+   */
+  private Map<String, Object> parseLocks = new HashMap<String, Object>();
 
   public FragmentParser(IStrategoConstructor... setup_3) {
     this.setup_3 = setup_3;
@@ -80,16 +82,7 @@ public class FragmentParser {
     return parser != null;
   }
   
-  private static IPath standardPath(IPath path) {
-    // Path from edit has no device set but path from save does so we remove it to get a match
-    return path.setDevice(null);
-  }
-
   private static synchronized JSGLRI getParser(Descriptor descriptor, IPath path, ISourceProject project) {
-    JSGLRI result = parsers.get(standardPath(path));
-    if(result != null)
-      return result;
-    
     try {
       if (descriptor == null) return null;
       
@@ -100,7 +93,7 @@ public class FragmentParser {
       if (controller instanceof SGLRParseController) {
         SGLRParseController sglrController = (SGLRParseController) controller;
         controller.initialize(path, project, null);
-        result = sglrController.getParser(); 
+        JSGLRI result = sglrController.getParser(); 
         
         if(result instanceof SugarJParser) {
           result = new SugarJTestParser(result);
@@ -112,7 +105,7 @@ public class FragmentParser {
 
         result.setTimeout(FRAGMENT_PARSE_TIMEOUT);
         result.setUseRecovery(true);
-        parsers.put(standardPath(path), result);
+
         return result;
       } else {
         throw new IllegalStateException(
@@ -135,19 +128,16 @@ public class FragmentParser {
 
     if(parseInfo == null) {
       IStrategoTerm parsed;
-      SGLRParseController controller = parser.getController();
-      controller.getParseLock().lock();
-      try {
+      synchronized(getParseLock(filename)) {
         parsed = parser.parse(fragment.getText(), filename);
-      } finally {
-        controller.getParseLock().unlock();
       }
-    
+      
       if(parsed == null) {
         isLastSyntaxCorrect = false;
         return fragmentTerm;
       } else {
         parseInfo = FragmentParseInfo.cacheAdd(filename, fragment, parsed);
+        SGLRParseController controller = parser.getController();
         SourceAttachment.putSource(parsed, SourceAttachment.getResource(fragmentTerm), controller);
       }
     }
@@ -156,6 +146,14 @@ public class FragmentParser {
     return fragment.realign(parseInfo.getParsed(), parseInfo.originalTokenizer());
   }
 
+  private synchronized Object getParseLock(String filename) {
+    Object lock = parseLocks.get(filename);
+    if(lock == null) {
+      lock = new Object();
+      parseLocks.put(filename,  lock);
+    }
+    return lock;
+  }
   
   private List<FragmentRegion> getSetupRegions(IStrategoTerm ast) {
     final List<FragmentRegion> results = new ArrayList<FragmentRegion>();
