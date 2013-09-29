@@ -64,7 +64,7 @@ rules
     (selected, position, ast, path, project-path) -> result
     with
       scope-paths( 
-        result := <topdown(strip-annos) ; to-java(|<base-filename> path)> ast 
+        result := <topdown(strip-annos) ; to-java(|path)> ast 
         | path, project-path)
       
   editor-hover:

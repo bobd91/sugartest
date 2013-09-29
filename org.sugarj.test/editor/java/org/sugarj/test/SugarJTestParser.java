@@ -1,8 +1,10 @@
 package org.sugarj.test;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.spoofax.interpreter.terms.IStrategoTerm;
@@ -15,6 +17,7 @@ import org.sugarj.common.FileCommands;
 import org.sugarj.common.Log;
 import org.sugarj.common.path.RelativePath;
 import org.sugarj.driver.Driver;
+import org.sugarj.driver.ModuleSystemCommands;
 import org.sugarj.driver.Result;
 import org.sugarj.editor.SugarJConsole;
 import org.sugarj.editor.SugarJParseController;
@@ -76,9 +79,20 @@ class SugarJTestParser extends SugarJParser {
   }
   
   private RelativePath makeRelative(String filename) {
+    Path filePath = new Path(filename);
+    IPath relativePath = relativeToSourceDir(filePath, environment.getSourcePath());
+    return environment.createOutPath(relativePath.toString());
+  }
+  
+  private IPath relativeToSourceDir(Path filePath, List<org.sugarj.common.path.Path> sourcePaths) {
+    for(org.sugarj.common.path.Path sourcePath : sourcePaths) {
+      IPath path = new Path(sourcePath.toString());
+      if(path.isPrefixOf(filePath)) {
+        return filePath.makeRelativeTo(path);
+      }
+    }
     Path root = new Path(environment.getRoot().getAbsolutePath());
-    String relativeName = new Path(filename).makeRelativeTo(root).toString();
-    return environment.createOutPath(relativeName);
+    return filePath.makeRelativeTo(root);
   }
   
 }

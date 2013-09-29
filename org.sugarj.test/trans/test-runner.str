@@ -65,8 +65,8 @@ strategies
     end
     
   test-to-description = 
-    ?TestDecl(_, description(<id>), _)  
-  + ?TestDeclEmpty(_, description(<id>))
+    ?TestDecl(_, Description(<id>), _)  
+  + ?TestDeclEmpty(_, Description(<id>))
 
   external testlistener-init(|)
   external testlistener-add-testsuite(|testsuite, project-path)

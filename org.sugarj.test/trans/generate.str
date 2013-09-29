@@ -12,130 +12,148 @@ rules
 	// Called from sugartest.str to generate a JUnit file for an list of tests
   to-java(|name):
     TestSuite(Language(language), setup, test*) ->
-       ($[test/[name].java], 
-        $[package test;
+       (filepath, 
+        $[[package]
 
           import org.junit.Test;
-          import org.sugarj.test.junit.TestCase;
-                    
-          public class [name] extends TestCase {
+          import org.junit.Before;
+          import org.junit.runner.RunWith;
+					
+          import org.sugarj.test.junit.TestParser;
+          import org.sugarj.test.junit.TestRunner;
+          import org.sugarj.test.junit.TestDescription;
+
           
-            public [name]() {
-              super("[language]");
+          @RunWith(TestRunner.class)          
+          public class [class] {
+            
+            private TestParser parser;
+ 
+            @Before
+            public void setup() {
+              parser = new TestParser("[language]");
+              [setup']
             }
             [test'*]
            }
         ])
     with 
-      test'*   := <generate_tests> test*
+      filepath := <get-filepath> name;
+      package := <get-package> name;
+      class := <get-class> name;
+      setup' := <generate-setup <+ blank> setup;
+      test'*   := <map-with-index(generate-test)> test*
   
-  // Generate test code for all tests
-  generate_tests =
-  	test* := <id>;
-    filter(is-test);
-    map-with-index(generate-test(|test*))     
-
-  is-test = ?TestDecl(_,_,_)
-
-  // Generate test code for a single test
-  // @param list of all of the setup/tests
-  generate-test(|test*) :
-    (i, TestDecl(_,description(desc),Test(_,result))) ->  
+  get-filepath = guarantee-extension(|"java")
+  
+  get-package = named-package <+ blank
+  
+  named-package =
+    string-tokenize(|['/']);  // path to array with / separator
+    ?[_|<id>];                // drop head
+    init;                     // drop tail
+    separate-by(|".");        // put dots between
+    !["package " | <id>];     // put keyword in front
+    concat-strings;           // flatten
+    <strcat> (<id>, ";")      // put ; at end
+  
+  get-class = base-filename ; remove-extension
+  
+  // Used for missing setup or output blocks
+  blank : _ -> $[]
+  
+  // Generate setup code for simple setup
+  generate-setup :
+    Some(SetupDecl(Setup(_,SetupPart(QuotePart(s)),_))) ->
+      $[parser
+        .before(
+          [<add-lines> s]);]
+      
+  // Generate setup code for complex setup
+  generate-setup :
+    Some(SetupDecl(Setup(_,SetupPart(QuotePart(s1),_,QuotePart(s2)),_))) ->
+      $[parser
+        .before(
+          [<add-lines> s1])
+        .after(
+          [<add-lines> s2]);]
+        
+  // Generate code for single test
+  generate-test :
+    (i, TestDecl(_,Description(desc),Test(inp,res))) ->  
       $[
         @Test
         @TestDescription("Test [desc']")
         public void test[i]() throws Exception {
-          [inputs*]
-          parse();
-          [assertion]
+          parser
+          [input]
+          [output]
+          [expectation]
         }  
       ]  
       with
-        tst := <Snd>
-      ; desc' := <escape ; trim-whitespace> desc 
-      ; inputs* := <generate-inputs(|tst)> test* 
-      ; assertion := <generate-assertion> result
-        
-  // Generate setups/inputs/outputs for a single test
-  // Filters all setup/tests to get all setups and just this test
-  // as each test needs all of the setups
-  generate-inputs(|tst) =
-  	filter(is-for-this-test(|tst));
-  	map(collect-inputs)
-  	
-  is-for-this-test(|tst) :
-    Setup(_,_,_) -> <id>
-    
-  is-for-this-test(|tst) :
-    Test -> <id>
-    where
-      <equal> (tst, <id>)
-    
-  // Collect the setups/inputs/outputs for a given setup or test  
-  // Some tests require inputs and outputs
-  collect-inputs:
-    Setup(_,_,i) ->
-      $[[<add-setup> i]]
+        desc' := <escape ; trim-whitespace> desc;
+        input := <generate-input> inp;
+        output := <generate-output <+ blank> res;
+        expectation := <generate-expectation> res
   
-  collect-inputs:
-    TestDecl(_,_,Test(i,ParseOutput(o))) ->     
-      $[[<add-input> i]
-        [<add-output> o]]
-        
-  collect-inputs:
-    TestDecl(_,_,Test(i,DesugarOutput(o))) ->     
-      $[[<add-input> i]
-        [<add-output> o]]
-        
-  collect-inputs:
-    TestDecl(_,_,Test(i,_)) -> 
-      $[[<add-input> i]]     
+  // Generate code for adding input text
+  generate-input :
+    Input(_,QuotePart(i),_) ->
+      $[.input(
+          [<add-lines> i])]
   
-  // Add the actual lines for a given setup/input or output
-  add-setup:
-    Input(_,i,_) -> <add-lines(|"setup")> i
-    
-  add-input:
-    Input(_,i,_) -> <add-lines(|"input")> i
-    
-  add-output:
-    Output(_,o,_) -> <add-lines(|"outpt")> o
-    
-  add-lines(|t):
-    QuotePart(s) -> <get-lines ; map(add-line(|t))> s
-    
-  add-line(|t):
-    s -> 
-    $[[t]("[<escape>]");
-     ]
-        
-  // Generate required assertion based on expected result
-  generate-assertion:
-    SuccessParsing() -> $[assertParseSuccess();]  
-        
-  generate-assertion:
-    FailsParsing() -> $[assertParseFailure();]  
-
-  generate-assertion:
-    ParsePattern(p) -> $[assertParseMatchesATerm("[<format-aterm> p]");]
-        
-  generate-assertion:
-    ParseOutput(_) -> $[assertParseMatchesOutput();]  
+  // Generate code for adding expected parse output text
+  generate-output :
+    ParseOutput(Output(_,QuotePart(o),_)) ->
+      $[.output(
+          [<add-lines> o])]
       
-  generate-assertion:
-    ParseContainsPattern(p) -> $[assertParseContainsATerm("[<format-aterm> p]");]  
+  // Generate code for adding expected desugar output text
+  generate-output :
+    DesugarOutput(Output(_,QuotePart(o),_)) ->
+      $[.output(
+          [<add-lines> o])] 
+  
+  // Takes string with embedded newlines and produces string with each
+  // line escaped, quoted and comma/newline separated
+  // apple\norange\npear  ->  "apple",\n"orange",\n"pear" 
+  add-lines:
+    s -> <drop-trailing> $[[<get-lines ; map(add-line)> s]]
+  
+  // Escapes, quotes and adds comma and newline  
+  add-line : 
+    _ ->
+    $["[<escape>]",
+     ]
+  
+  // Remove trailing , newline and spaces
+  drop-trailing = rtrim-chars(is-trailing)
+  
+  is-trailing = test('\n' + ',' + ' ' + '\t')
+  
+  // Generate required assertion based on expected result
+  generate-expectation:
+    SuccessParsing() -> $[.assertParseSuccess();]  
         
-  generate-assertion:
-    DesugarOutput(_) -> $[assertDesugarMatchesOutput();]  
+  generate-expectation:
+    FailsParsing() -> $[.assertParseFailure();]  
+
+  generate-expectation:
+    ParsePattern(p) -> $[.assertParseMatchesATerm("[<format-aterm> p]");]
         
-  generate-assertion:
-    DesugarContainsPattern(p) -> $[assertDesugarContainsATerm("[<format-aterm> p]");]  
+  generate-expectation:
+    ParseOutput(_) -> $[.assertParseMatchesOutput();]  
+      
+  generate-expectation:
+    ParseContainsPattern(p) -> $[.assertParseContainsATerm("[<format-aterm> p]");]  
+        
+  generate-expectation:
+    DesugarOutput(_) -> $[.assertDesugarMatchesOutput();]  
+        
+  generate-expectation:
+    DesugarContainsPattern(p) -> $[.assertDesugarContainsATerm("[<format-aterm> p]");]  
 
   // Use sugartest pp table as it extends ATerms with wildcards
   format-aterm =
     pp-sugartest-string ; escape
-    
-    
-    
-    
-  

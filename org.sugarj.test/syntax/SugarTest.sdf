@@ -84,7 +84,7 @@ exports
   context-free syntax
   	
   	
-    EOLString -> Description {cons("description")}
+    EOLString -> Description {cons("Description")}
 
   lexical syntax
 

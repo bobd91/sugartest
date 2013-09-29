@@ -20,7 +20,7 @@ rules
     TestDeclEmpty(_, d) -> (<id>, "Empty test case")
   
   check-error:
-    TestDecl(_,description(d), Test(i, expectation)) -> (d, warnings)
+    TestDecl(_,Description(d), Test(i, expectation)) -> (d, warnings)
     where
       (input, selections) := <Test-get-input <+ !(FailsParsing(), [])> i
     ; if not(<is-parse-only-test> expectation) then
