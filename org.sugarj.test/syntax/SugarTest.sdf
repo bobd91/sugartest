@@ -9,22 +9,22 @@ exports
   context-free start-symbols TestSuite
 
 exports
-  sorts TestSuite Test Input Output Desugar Result
+  sorts TestSuite Setup Test Input Output Result
   context-free syntax
-    Header TestDecl*   -> TestSuite {cons("testsuite")}
-    "language" ID      -> Header {cons("Language")}
+    Language SetupDecl? TestDecl*   -> TestSuite {cons("TestSuite")}
+    "language" ID      -> Language {cons("Language")}
 
-    Test         -> TestDecl
-
+  "setup" Setup -> SetupDecl {cons("SetupDecl")}
+  
   %% The description syntax is very ambiguous if comments are allowed around it. So, we forbid comments.
   syntax
     
-    "setup" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> -> <Test-CF> {cons("Setup")}
-    "setup" <OptSpace-LEX> <Description-CF>                         -> <Test-CF> {cons("SetupEmpty")}
+    "test" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Test-CF> -> <TestDecl-CF> {cons("TestDecl")}
+    "test" <OptSpace-LEX> <Description-CF> -> <TestDecl-CF> {cons("TestDeclEmpty")}
 
-    "test" <OptSpace-LEX> <Description-CF> <LAYOUT?-CF> <Input-CF> <LAYOUT?-CF> <Result*-CF> -> <Test-CF> {cons("Test")}
-    "test" <OptSpace-LEX> <Description-CF> -> <Test-CF> {cons("TestEmpty")}
-
+  context-free syntax
+    Input Result -> Test {cons("Test")}
+    
   lexical syntax
     [\ ]+   -> OptSpace
     NoSpace -> OptSpace
@@ -35,68 +35,55 @@ exports
     NoSpace  -/- ~[\[].~[\[]
 
   context-free syntax
-
-    "parse" "to" ATerm   -> Result {cons("pattern")}
-    "parse" "to" Output   -> Result {cons("ParseOutput")}
+                               -> Result {cons("SuccessParsing"), avoid}
+    "parse"                    -> Result {cons("SuccessParsing")}
+    "parse" "succeeds"         -> Result {cons("SuccessParsing"), prefer}
+    "parse" "fails"            -> Result {cons("FailsParsing")}
+    "parse" "to" ATerm         -> Result {cons("ParsePattern")}
+    "parse" "to" Output        -> Result {cons("ParseOutput")}
+    "parse" "contains" ATerm   -> Result {cons("ParseContainsPattern")}
+    "desugar" "to" Output      -> Result {cons("DesugarOutput")}
+    "desugar" "contains" ATerm -> Result {cons("DesugarContainsPattern")}
     
-    "parse" "contains" ATerm -> Result {cons("containspattern")}
-
-    "parse" "fails"      -> Result {cons("FailsParsing")}
-    "parse" "succeeds"   -> Result {cons("SuccessParsing"), prefer}
-    "parse"              -> Result {cons("SuccessParsing")}
-
-    "desugar" "to" Desugar -> Result {cons("ParseDesugar")}
-    "desugar" "contains" ATerm -> Result {cons("desugarcontainspattern")}
-	
-    
-    %% Handle a couple of lousy recoveries
-    "test"  -> ATerm {reject}
-    "setup" -> ATerm {reject}
-            -> "fails" {recover, reject}
-            -> "=>" {recover, reject}
-            -> "->" {recover, reject}
-            -> "/" {recover, reject}
- 
-context-free syntax
+  context-free syntax
 
     "_"                  -> ATerm  {cons("wildcard")}
     "..."                -> { ATerm ","}+ {cons("wildcardvar")}
 
-  sorts
   syntax
       
-    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-LEX> -> <Input-CF> {cons("Input")}
-    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-LEX> -> <Input-CF> {cons("Input")}
-    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-LEX> -> <Input-CF> {cons("Input")}
+    <Bracket2-LEX> <SetupPart2-CF> <CBracket2-CF> -> <Setup-CF> {cons("Setup")}
+    <Bracket3-LEX> <SetupPart3-CF> <CBracket3-CF> -> <Setup-CF> {cons("Setup")}
+    <Bracket4-LEX> <SetupPart4-CF> <CBracket4-CF> -> <Setup-CF> {cons("Setup")}
+    
+    <StringPart2-CF> <TestPlaceholder2-CF> <StringPart2-CF> -> <SetupPart2-CF> {cons("SetupPart")}
+    <StringPart3-CF> <TestPlaceholder3-CF> <StringPart3-CF> -> <SetupPart3-CF> {cons("SetupPart")}
+    <StringPart4-CF> <TestPlaceholder4-CF> <StringPart4-CF> -> <SetupPart4-CF> {cons("SetupPart")}
 
-    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-CF> -> <Output-CF> {cons("Output")}
-    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Output-CF> {cons("Output")}
-    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Output-CF> {cons("Output")}
-    
-    <Bracket2-LEX> <StringPart2-CF> <TailParts2-CF> <CBracket2-CF> -> <Desugar-CF> {cons("Desugar")}
-    <Bracket3-LEX> <StringPart3-CF> <TailParts3-CF> <CBracket3-CF> -> <Desugar-CF> {cons("Desugar")}
-    <Bracket4-LEX> <StringPart4-CF> <TailParts4-CF> <CBracket4-CF> -> <Desugar-CF> {cons("Desugar")}
+    <StringPart2-CF> -> <SetupPart2-CF> {cons("SetupPart")}
+    <StringPart3-CF> -> <SetupPart3-CF> {cons("SetupPart")}
+    <StringPart4-CF> -> <SetupPart4-CF> {cons("SetupPart")}
 
-                                                      -> <TailParts2-CF> {cons("Done")}
-    <MarkedPart2-CF> <StringPart2-CF> <TailParts2-CF> -> <TailParts2-CF> {cons("More")}
-                                                      -> <TailParts3-CF> {cons("Done")}
-    <MarkedPart3-CF> <StringPart3-CF> <TailParts3-CF> -> <TailParts3-CF> {cons("More")}
-                                                      -> <TailParts4-CF> {cons("Done")}
-    <MarkedPart4-CF> <StringPart4-CF> <TailParts4-CF> -> <TailParts4-CF> {cons("More")}
-    
-    <NFBracket2-LEX> <StringPart2-CF> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("Marked")}
-    <NFBracket3-LEX> <StringPart3-CF> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("Marked")}
-    <NFBracket4-LEX> <StringPart4-CF> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("Marked")}
-    
-    <NFBracket2-LEX> <ThreeDots-LEX> <NFCBracket2-LEX> -> <MarkedPart2-CF> {cons("MarkedPlaceholder"), prefer}
-    <NFBracket3-LEX> <ThreeDots-LEX> <NFCBracket3-LEX> -> <MarkedPart3-CF> {cons("MarkedPlaceholder"), prefer}
-    <NFBracket4-LEX> <ThreeDots-LEX> <NFCBracket4-LEX> -> <MarkedPart4-CF> {cons("MarkedPlaceholder"), prefer}
+    <Bracket2-LEX> <StringPart2-CF> <CBracket2-CF> -> <Input-CF> {cons("Input")}
+    <Bracket3-LEX> <StringPart3-CF> <CBracket3-CF> -> <Input-CF> {cons("Input")}
+    <Bracket4-LEX> <StringPart4-CF> <CBracket4-CF> -> <Input-CF> {cons("Input")}
+
+    <Bracket2-LEX> <StringPart2-CF> <CBracket2-CF> -> <Output-CF> {cons("Output")}
+    <Bracket3-LEX> <StringPart3-CF> <CBracket3-CF> -> <Output-CF> {cons("Output")}
+    <Bracket4-LEX> <StringPart4-CF> <CBracket4-CF> -> <Output-CF> {cons("Output")}
     
     <InputChars2-LEX> -> <StringPart2-CF> {cons("QuotePart")}
     <InputChars3-LEX> -> <StringPart3-CF> {cons("QuotePart")}
     <InputChars4-LEX> -> <StringPart4-CF> {cons("QuotePart")}
+    
+    <Bracket2-LEX> <Ellipsis-CF> <CBracket2-CF>-> <TestPlaceholder2-CF> {cons("TestPlaceholder")}
+    %%<TestPlaceholder3-LEX> -> <TestPlaceholder3-CF> {cons("TestPlaceholder")}
+    %%<TestPlaceholder4-LEX> -> <TestPlaceholder4-CF> {cons("TestPlaceholder")}
 
+     
   context-free syntax
+  	
+  	
     EOLString -> Description {cons("description")}
 
   lexical syntax
@@ -121,26 +108,18 @@ context-free syntax
     "]]]"  -> CBracket3
     "]]]]" -> CBracket4
     
-    "..."  -> ThreeDots
- 
-    %% non-follow-restricted:
-
-    "["    -> NFBracket1
-    "[["   -> NFBracket2
-    "[[["  -> NFBracket3
-    "[[[[" -> NFBracket4
+    %%Bracket2 Ellipsis CBracket2 -> TestPlaceholder2
+    Bracket3 Ellipsis CBracket3 -> TestPlaceholder3
+    Bracket4 Ellipsis CBracket4 -> TestPlaceholder4
     
-    "]"    -> NFCBracket1
-    "]]"   -> NFCBracket2
-    "]]]"  -> NFCBracket3
-    "]]]]" -> NFCBracket4
-
+   "..." -> Ellipsis
+    
   lexical restrictions
     EOLString -/- ~[\n\[\"]
     EOLQuote1 -/- [\"]
     
     Bracket1   -/- [\[].~[\[]
-    Bracket2   -/- [\[].~[\[] %% allow [[[[x]]  ]]
+    Bracket2   -/- [\[].~[\[]
     Bracket3   -/- [\[].~[\[]
 
     CBracket1   -/- [\]]

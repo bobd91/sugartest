@@ -1,14 +1,11 @@
 package org.sugarj.test;
 
 import static org.sugarj.test.AstConstructors.SETUP_3;
-import static org.sugarj.test.AstConstructors.SUGAR_SETUP_3;
-import static org.sugarj.test.AstConstructors.INPUT_4;
-import static org.sugarj.test.AstConstructors.OUTPUT_4;
-import static org.sugarj.test.AstConstructors.DESUGAR_4;
+import static org.sugarj.test.AstConstructors.INPUT_3;
+import static org.sugarj.test.AstConstructors.OUTPUT_3;
 import static org.sugarj.test.AstConstructors.LANGUAGE_1;
 import static org.sugarj.test.AstConstructors.ERROR_1;
 import static org.spoofax.interpreter.core.Tools.asJavaString;
-import static org.spoofax.interpreter.core.Tools.isTermList;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getRightToken;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getTokenizer;
@@ -31,12 +28,10 @@ import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.jsglr.shared.BadTokenException;
 import org.spoofax.jsglr.shared.SGLRException;
 import org.spoofax.jsglr.shared.TokenExpectedException;
-import org.spoofax.terms.StrategoListIterator;
 import org.spoofax.terms.TermTransformer;
 import org.spoofax.terms.TermVisitor;
 import org.spoofax.terms.attachments.ParentAttachment;
 import org.spoofax.terms.attachments.ParentTermFactory;
-import org.strategoxt.imp.runtime.Debug;
 import org.strategoxt.imp.runtime.EditorState;
 import org.strategoxt.imp.runtime.Environment;
 import org.strategoxt.imp.runtime.dynamicloading.Descriptor;
@@ -60,10 +55,8 @@ import org.sugarj.common.FileCommands;
 public class SugarTestJSGLRI extends JSGLRI {
   private static final int PARSE_TIMEOUT = 20 * 1000;
 
-  private final FragmentParser sugarFragmentParser = new FragmentParser(SETUP_3, SUGAR_SETUP_3);
+  private final FragmentParser fragmentParser = new FragmentParser();
   
-  private final FragmentParser desugarFragmentParser = new FragmentParser(SETUP_3);
-
   private final SelectionFetcher selections = new SelectionFetcher();
   
   private final static String SUGARJ = "SugarJ";
@@ -88,13 +81,11 @@ public class SugarTestJSGLRI extends JSGLRI {
     final ITermFactory nonParentFactory = Environment.getTermFactory();
     final ITermFactory factory = new ParentTermFactory(nonParentFactory);
     final AbstractBaseLanguage language = getLanguage(root);
-    final FragmentParser sugarParser = configureFragmentParser(root, getSugarJLanguage(), sugarFragmentParser);
-    final FragmentParser desugarParser = configureFragmentParser(root, getSugarJLanguage(), desugarFragmentParser);
+    final FragmentParser parser = configureFragmentParser(root, getSugarJLanguage(), fragmentParser);
     assert !(nonParentFactory instanceof ParentTermFactory);
 
     if (language == null 
-        || sugarParser == null || !sugarParser.isInitialized()
-        || desugarParser == null || !desugarParser.isInitialized()) {
+        || parser == null || !parser.isInitialized()) {
       return root;
     }
     
@@ -103,25 +94,15 @@ public class SugarTestJSGLRI extends JSGLRI {
       @Override
       public IStrategoTerm preTransform(IStrategoTerm term) {
         IStrategoConstructor cons = tryGetConstructor(term);
-        FragmentParser parser = null;
         
-        if (cons == INPUT_4 || cons == OUTPUT_4) {
-          parser = sugarParser;
-        }
-        else if (cons == DESUGAR_4) {
-          parser = desugarParser;
-        }
-        
-        if (parser != null) {
-          IStrategoTerm fragmentHead = termAt(term, 1);
-          IStrategoTerm fragmentTail = termAt(term, 2);
-          retokenizer.copyTokensUpToIndex(getLeftToken(fragmentHead).getIndex() - 1);
+        if (cons == INPUT_3 || cons == OUTPUT_3 || cons == SETUP_3) {
+          IStrategoTerm fragment = termAt(term, 1);
+          retokenizer.copyTokensUpToIndex(getLeftToken(fragment).getIndex() - 1);
           try {
             String testFilename = makeTestFilename(filename, language);
-            IStrategoTerm parsed = parser.parse(oldTokenizer, term, testFilename);
-            int oldFragmentEndIndex = getRightToken(fragmentTail).getIndex();
-            retokenizer.copyTokensFromFragment(fragmentHead, fragmentTail, parsed,
-                getLeftToken(fragmentHead).getStartOffset(), getRightToken(fragmentTail).getEndOffset());
+            IStrategoTerm parsed = parser.parse(oldTokenizer.getInput(), fragment, testFilename);
+            int oldFragmentEndIndex = getRightToken(fragment).getIndex();
+            retokenizer.copyTokensFromFragment(fragment, parsed);
             if (!parser.isLastSyntaxCorrect())
               parsed = nonParentFactory.makeAppl(ERROR_1, parsed);
             ImploderAttachment implodement = ImploderAttachment.get(term);

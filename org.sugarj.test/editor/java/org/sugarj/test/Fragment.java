@@ -2,24 +2,17 @@ package org.sugarj.test;
 
 import static org.sugarj.test.AstConstructors.FAILS_PARSING_0;
 import static org.sugarj.test.AstConstructors.SETUP_3;
-import static org.sugarj.test.AstConstructors.SUGAR_SETUP_3;
-import static org.sugarj.test.AstConstructors.OUTPUT_4;
-import static org.sugarj.test.AstConstructors.DESUGAR_4;
-import static org.spoofax.interpreter.core.Tools.listAt;
+import static org.sugarj.test.AstConstructors.OUTPUT_3;
 import static org.spoofax.terms.Term.tryGetConstructor;
 import static org.spoofax.terms.attachments.ParentAttachment.getParent;
 
-import java.util.List;
-
 import org.spoofax.interpreter.terms.IStrategoAppl;
 import org.spoofax.interpreter.terms.IStrategoConstructor;
-import org.spoofax.interpreter.terms.IStrategoList;
 import org.spoofax.interpreter.terms.IStrategoTerm;
 import org.spoofax.jsglr.client.imploder.IToken;
 import org.spoofax.jsglr.client.imploder.ITokenizer;
 import org.spoofax.jsglr.client.imploder.ImploderAttachment;
 import org.spoofax.jsglr.client.imploder.Tokenizer;
-import org.spoofax.terms.StrategoListIterator;
 
 /**
  * Keep track of the fragment text, and offsets
@@ -30,21 +23,22 @@ import org.spoofax.terms.StrategoListIterator;
  */
 public class Fragment {
   private String input;
-  private String output;
 
   private IStrategoTerm term;
   private FragmentRegion region;
+  private SetupRegion setupRegion;
+  
   private int outputStart;
   private int outputEnd;
   
   private boolean successExpected;
   
-  public Fragment(String input, IStrategoTerm term, List<FragmentRegion> setupRegions) {
+  public Fragment(String input, IStrategoTerm term, SetupRegion setupRegion) {
     this.input = input;
     this.term = term;
-    region = new FragmentRegion(term);    
+    this.setupRegion = setupRegion;
+    region = new FragmentRegion(term); 
     successExpected = isSuccessExpected();
-    createText(setupRegions);
   }
   
   /**
@@ -53,7 +47,30 @@ public class Fragment {
    * @return
    */
   public String getText() {
-    return output;
+    return isSetup()
+             ? getSetupText()
+             : getTestText();
+  }
+  
+  private boolean isSetup() {
+    return setupRegion.matches(region);
+  }
+  
+  private String getSetupText() {
+    String result = setupRegion.getText(input);
+    outputStart = 0;
+    outputEnd = result.length();
+    return result;
+  }
+  
+  private String getTestText() {
+    StringBuilder result = new StringBuilder(input.length());
+    result.append(setupRegion.getStartText(input));
+    outputStart = result.length();
+    result.append(region.getText(input));
+    outputEnd = result.length();
+    result.append(setupRegion.getEndText(input));
+    return result.toString();
   }
 
   /**
@@ -90,49 +107,14 @@ public class Fragment {
     return parsed;
   }
   
- private void createText(List<FragmentRegion> setupRegions) {
-    StringBuilder result = new StringBuilder(input.length());
-    boolean addedFragment = false;
-
-    for (FragmentRegion setup : setupRegions) {
-      if (!addedFragment && setup.getStartOffset() >= region.getStartOffset()) {
-        appendFragment(region, input, result);
-        addedFragment = true;
-      }
-      if(setup.getStartOffset() != region.getStartOffset()) {
-        appendSetup(setup, input, result);
-      }
-    }
-    
-    if (!addedFragment) {
-      appendFragment(region, input, result);
-    }
- 
-    output = result.toString(); 
-  }
-  
-   private void appendFragment(FragmentRegion reg, String input, StringBuilder result) {
-    outputStart = result.length();
-    result.append(reg.getText(input));
-    outputEnd = result.length();
-  }
-  
-   private void appendSetup(FragmentRegion reg, String input, StringBuilder result) {
-     result.append(reg.getText(input));
-   }
-
   private boolean isSuccessExpected() {
-    if (tryGetConstructor(term) == OUTPUT_4 || tryGetConstructor(term) == DESUGAR_4)
+    IStrategoAppl parent = (IStrategoAppl) getParent(term);
+    IStrategoConstructor cons = tryGetConstructor(parent);
+    if (cons == OUTPUT_3 || cons == SETUP_3)
       return true;
-    IStrategoAppl test = (IStrategoAppl) getParent(term);
-    if (test.getConstructor() == SETUP_3 || test.getConstructor() == SUGAR_SETUP_3)
-      return true;
-    IStrategoList expectations = listAt(test, test.getSubtermCount() - 1);
-    for (IStrategoTerm expectation : StrategoListIterator.iterable(expectations)) {
-      IStrategoConstructor cons = tryGetConstructor(expectation);
-      if (/*cons == FAILS_0 ||*/ cons == FAILS_PARSING_0)
-        return false;
-    }
-    return true;
+    IStrategoAppl test = (IStrategoAppl) getParent(parent);
+    IStrategoTerm expectation = test.getSubterm(1);
+    cons = tryGetConstructor(expectation);
+    return cons != FAILS_PARSING_0;
   }
 }

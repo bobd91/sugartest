@@ -11,20 +11,17 @@ public class AstConstructors {
   public static final IStrategoConstructor FAILS_PARSING_0 =
       Environment.getTermFactory().makeConstructor("FailsParsing", 0);
   
+  public static final IStrategoConstructor SOME_1 =
+      Environment.getTermFactory().makeConstructor("Some", 1);
+
   public static final IStrategoConstructor SETUP_3 =
     Environment.getTermFactory().makeConstructor("Setup", 3);
 
-  public static final IStrategoConstructor SUGAR_SETUP_3 =
-    Environment.getTermFactory().makeConstructor("SugarSetup", 3);
-
-  public static final IStrategoConstructor INPUT_4 =
-    Environment.getTermFactory().makeConstructor("Input", 4);
+  public static final IStrategoConstructor INPUT_3 =
+    Environment.getTermFactory().makeConstructor("Input", 3);
   
-  public static final IStrategoConstructor OUTPUT_4 =
-    Environment.getTermFactory().makeConstructor("Output", 4);
-  
-  public static final IStrategoConstructor DESUGAR_4 =
-    Environment.getTermFactory().makeConstructor("Desugar", 4);
+  public static final IStrategoConstructor OUTPUT_3 =
+    Environment.getTermFactory().makeConstructor("Output", 3);
   
   public static final IStrategoConstructor QUOTEPART_1 =
     Environment.getTermFactory().makeConstructor("QuotePart", 1);

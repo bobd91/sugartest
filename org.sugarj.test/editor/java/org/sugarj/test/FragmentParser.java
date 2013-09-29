@@ -1,24 +1,16 @@
 package org.sugarj.test;
 
-import static org.sugarj.test.AstConstructors.INPUT_4;
-import static org.spoofax.terms.Term.tryGetConstructor;
-
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.imp.model.ISourceProject;
 import org.eclipse.imp.parser.IParseController;
-import org.spoofax.interpreter.terms.IStrategoConstructor;
 import org.spoofax.interpreter.terms.IStrategoTerm;
-import org.spoofax.jsglr.client.imploder.ITokenizer;
 import org.spoofax.jsglr.shared.BadTokenException;
 import org.spoofax.jsglr.shared.SGLRException;
 import org.spoofax.jsglr.shared.TokenExpectedException;
-import org.spoofax.terms.TermVisitor;
 import org.strategoxt.imp.runtime.Environment;
 import org.strategoxt.imp.runtime.dynamicloading.BadDescriptorException;
 import org.strategoxt.imp.runtime.dynamicloading.Descriptor;
@@ -45,13 +37,11 @@ public class FragmentParser {
   
   private static final int FRAGMENT_PARSE_TIMEOUT = 3000;
   
-  private final IStrategoConstructor[] setup_3;
-
   private Descriptor parseCacheDescriptor;
   
   private JSGLRI parser;
 
-  private List<FragmentRegion> setupRegions;
+  private SetupRegion setupRegion;
   
   private boolean isLastSyntaxCorrect;
   
@@ -63,11 +53,7 @@ public class FragmentParser {
    * 
    * Use a lock based on the name of the file being edited
    */
-  private Map<String, Object> parseLocks = new HashMap<String, Object>();
-
-  public FragmentParser(IStrategoConstructor... setup_3) {
-    this.setup_3 = setup_3;
-  }
+  private Map<String, Object> parseLocks = new HashMap<>();
 
   public void configure(Descriptor descriptor, IPath path, ISourceProject project, IStrategoTerm ast) {
     if (parseCacheDescriptor != descriptor) {
@@ -75,7 +61,7 @@ public class FragmentParser {
       parser = getParser(descriptor, path, project);
     }
 
-    setupRegions = getSetupRegions(ast);
+    setupRegion = getSetupRegion(ast);
   }
   
   public boolean isInitialized() {
@@ -119,11 +105,11 @@ public class FragmentParser {
     return null;
   }
 
-  public IStrategoTerm parse(ITokenizer oldTokenizer, IStrategoTerm fragmentTerm, String filename)
+  public IStrategoTerm parse(String input, IStrategoTerm fragmentTerm, String filename)
       throws TokenExpectedException, BadTokenException, SGLRException
       , IOException, InterruptedException {
     
-    Fragment fragment = new Fragment(oldTokenizer.getInput(), fragmentTerm, setupRegions);
+    Fragment fragment = new Fragment(input, fragmentTerm, setupRegion);
     FragmentParseInfo parseInfo = FragmentParseInfo.cacheGet(filename, fragment);
 
     if(parseInfo == null) {
@@ -155,28 +141,9 @@ public class FragmentParser {
     return lock;
   }
   
-  private List<FragmentRegion> getSetupRegions(IStrategoTerm ast) {
-    final List<FragmentRegion> results = new ArrayList<FragmentRegion>();
-    new TermVisitor() {
-      public void preVisit(IStrategoTerm term) {
-        IStrategoConstructor constructor = tryGetConstructor(term);
-        for(IStrategoConstructor setup : setup_3) {
-          if (constructor == setup) {
-            new TermVisitor() {
-              public final void preVisit(IStrategoTerm term) {
-                IStrategoConstructor constructor = tryGetConstructor(term);
-                if (constructor == INPUT_4) {
-                  results.add(new FragmentRegion(term));
-                }
-              }
-            }.visit(term);
-            return;
-          }
-        }
-      }
-    }.visit(ast);
-    return results;
-  }
+  private SetupRegion getSetupRegion(IStrategoTerm ast) {
+    return SetupRegion.setupRegionFor(ast);
+   }
   
   
   public boolean isLastSyntaxCorrect() {

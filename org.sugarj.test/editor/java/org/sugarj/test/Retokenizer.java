@@ -6,6 +6,7 @@ import static org.spoofax.jsglr.client.imploder.AbstractTokenizer.getTokenAfter;
 import static org.spoofax.jsglr.client.imploder.IToken.TK_ESCAPE_OPERATOR;
 import static org.spoofax.jsglr.client.imploder.IToken.TK_LAYOUT;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getLeftToken;
+import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getRightToken;
 import static org.spoofax.jsglr.client.imploder.ImploderAttachment.getSort;
 import static org.spoofax.terms.Term.isTermString;
 import static org.spoofax.terms.Term.tryGetConstructor;
@@ -23,9 +24,10 @@ import org.spoofax.jsglr.client.imploder.Tokenizer;
 import org.spoofax.terms.TermVisitor;
 
 /** 
- * Copied from org.strategoxt.imp.testing.Retokenizer
+ * Slightly modified copy of org.strategoxt.imp.testing.Retokenizer
  * 
  * @author Lennart Kats <lennart add lclnet.nl>
+ * @author Bob Davison
  */
 public class Retokenizer {
 	
@@ -41,21 +43,6 @@ public class Retokenizer {
 		newTokenizer.setSyntaxCorrect(oldTokenizer.isSyntaxCorrect());
 	}
 	
-	/*
-	public void copyTokensUpToOffset(int endOffset) {
-		int i = oldTokenizerCopiedIndex;
-		for(;;) {
-			Token token = oldTokenizer.getTokenAt(i);
-			if (token.getEndOffset() > endOffset)
-				break;
-			if (token.getTokenizer() != newTokenizer)
-				newTokenizer.reassignToken(token);
-			i++;
-		}
-		oldTokenizerCopiedIndex = i;
-	}
-	*/
-	
 	public void copyTokensUpToIndex(int index) {
 		reassignTokenRange(oldTokenizer, oldTokenizerCopiedIndex, index);
 		oldTokenizerCopiedIndex = index + 1;
@@ -69,7 +56,9 @@ public class Retokenizer {
 		copyTokensUpToIndex(oldTokenizer.getTokenCount() - 1);
 	}
 	
-	public void copyTokensFromFragment(IStrategoTerm fragmentHead, IStrategoTerm fragmentTail, IStrategoTerm parsedFragment, int startOffset, int endOffset) {
+	public void copyTokensFromFragment(IStrategoTerm fragment, IStrategoTerm parsedFragment) {
+	  int startOffset = getLeftToken(fragment).getStartOffset();
+	  int endOffset = getRightToken(fragment).getEndOffset();
 		Tokenizer fragmentTokenizer = (Tokenizer) ImploderAttachment.getTokenizer(parsedFragment);
 		IToken startToken, endToken;
 		if (fragmentTokenizer.getStartOffset() <= startOffset) {
@@ -94,9 +83,8 @@ public class Retokenizer {
 		ImploderAttachment.putImploderAttachment(parsedFragment, parsedFragment.isList(), old.getSort(), startToken, endToken);
 		
 		// Reassign new tokens to unparsed fragment
-		recolorMarkingBrackets(fragmentTail, fragmentTokenizer);
-		assignTokens(fragmentHead, startToken, endToken);
-		assignTokens(fragmentTail, startToken, endToken);
+		recolorMarkingBrackets(fragment, fragmentTokenizer);
+		assignTokens(fragment, startToken, endToken);
 	}
 
 	private void assignTokens(IStrategoTerm tree, final IToken startToken, final IToken endToken) {

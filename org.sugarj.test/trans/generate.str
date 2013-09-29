@@ -1,0 +1,141 @@
+module generate
+
+imports
+  include/SugarTest
+  lib/editor-common.generated
+
+
+// Largely re-written from the original (non-working) SpoofaxTesting code 
+
+rules
+	
+	// Called from sugartest.str to generate a JUnit file for an list of tests
+  to-java(|name):
+    TestSuite(Language(language), setup, test*) ->
+       ($[test/[name].java], 
+        $[package test;
+
+          import org.junit.Test;
+          import org.sugarj.test.junit.TestCase;
+                    
+          public class [name] extends TestCase {
+          
+            public [name]() {
+              super("[language]");
+            }
+            [test'*]
+           }
+        ])
+    with 
+      test'*   := <generate_tests> test*
+  
+  // Generate test code for all tests
+  generate_tests =
+  	test* := <id>;
+    filter(is-test);
+    map-with-index(generate-test(|test*))     
+
+  is-test = ?TestDecl(_,_,_)
+
+  // Generate test code for a single test
+  // @param list of all of the setup/tests
+  generate-test(|test*) :
+    (i, TestDecl(_,description(desc),Test(_,result))) ->  
+      $[
+        @Test
+        @TestDescription("Test [desc']")
+        public void test[i]() throws Exception {
+          [inputs*]
+          parse();
+          [assertion]
+        }  
+      ]  
+      with
+        tst := <Snd>
+      ; desc' := <escape ; trim-whitespace> desc 
+      ; inputs* := <generate-inputs(|tst)> test* 
+      ; assertion := <generate-assertion> result
+        
+  // Generate setups/inputs/outputs for a single test
+  // Filters all setup/tests to get all setups and just this test
+  // as each test needs all of the setups
+  generate-inputs(|tst) =
+  	filter(is-for-this-test(|tst));
+  	map(collect-inputs)
+  	
+  is-for-this-test(|tst) :
+    Setup(_,_,_) -> <id>
+    
+  is-for-this-test(|tst) :
+    Test -> <id>
+    where
+      <equal> (tst, <id>)
+    
+  // Collect the setups/inputs/outputs for a given setup or test  
+  // Some tests require inputs and outputs
+  collect-inputs:
+    Setup(_,_,i) ->
+      $[[<add-setup> i]]
+  
+  collect-inputs:
+    TestDecl(_,_,Test(i,ParseOutput(o))) ->     
+      $[[<add-input> i]
+        [<add-output> o]]
+        
+  collect-inputs:
+    TestDecl(_,_,Test(i,DesugarOutput(o))) ->     
+      $[[<add-input> i]
+        [<add-output> o]]
+        
+  collect-inputs:
+    TestDecl(_,_,Test(i,_)) -> 
+      $[[<add-input> i]]     
+  
+  // Add the actual lines for a given setup/input or output
+  add-setup:
+    Input(_,i,_) -> <add-lines(|"setup")> i
+    
+  add-input:
+    Input(_,i,_) -> <add-lines(|"input")> i
+    
+  add-output:
+    Output(_,o,_) -> <add-lines(|"outpt")> o
+    
+  add-lines(|t):
+    QuotePart(s) -> <get-lines ; map(add-line(|t))> s
+    
+  add-line(|t):
+    s -> 
+    $[[t]("[<escape>]");
+     ]
+        
+  // Generate required assertion based on expected result
+  generate-assertion:
+    SuccessParsing() -> $[assertParseSuccess();]  
+        
+  generate-assertion:
+    FailsParsing() -> $[assertParseFailure();]  
+
+  generate-assertion:
+    ParsePattern(p) -> $[assertParseMatchesATerm("[<format-aterm> p]");]
+        
+  generate-assertion:
+    ParseOutput(_) -> $[assertParseMatchesOutput();]  
+      
+  generate-assertion:
+    ParseContainsPattern(p) -> $[assertParseContainsATerm("[<format-aterm> p]");]  
+        
+  generate-assertion:
+    DesugarOutput(_) -> $[assertDesugarMatchesOutput();]  
+        
+  generate-assertion:
+    DesugarContainsPattern(p) -> $[assertDesugarContainsATerm("[<format-aterm> p]");]  
+
+  // Use sugartest pp table as it extends ATerms with wildcards
+  format-aterm =
+    pp-sugartest-string ; escape
+    
+    
+    
+    
+  

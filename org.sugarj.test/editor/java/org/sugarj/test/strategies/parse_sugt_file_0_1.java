@@ -24,10 +24,10 @@ import org.strategoxt.lang.Context;
 import org.strategoxt.lang.Strategy;
 
 /**
- * parse-spt-string strategy to get AST of SugarTest testsuite, 
+ * parse-sugt-string strategy to get AST of SugarTest testsuite, 
  * where the input fragments have been annotated with the AST of the input.
  * 
- * The current term is the name of the file to parse and the subsequemnt argument is the name 
+ * The current term is the name of the file to parse and the subsequent argument is the name 
  * of the project containing the file
  */
 public class parse_sugt_file_0_1 extends Strategy {

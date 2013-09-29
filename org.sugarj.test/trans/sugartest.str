@@ -8,6 +8,7 @@ imports
   include/SugarTest
   lib/editor-common.generated
   check
+  generate
   test-runner
   editor/SugarTest-Outliner
   
@@ -40,7 +41,7 @@ rules
       )
 
   report-invalid-language:
-    testsuite(h, _) -> ([error], [], [])
+    TestSuite(h, _, _) -> ([error], [], [])
     where
       not(get-language);
       error := (h, $[Specify a language to be tested e.g., language Java])
@@ -50,7 +51,7 @@ rules
       error := (language, $[Language [language] not defined or not loaded])
 
  get-language:
-    testsuite(Language(language), _) -> language
+    TestSuite(Language(language),_,_) -> language
 
  
   generate-aterm:
@@ -58,7 +59,14 @@ rules
     with
       selected' := <topdown(strip-annos)> selected ;
       filename := <guarantee-extension(|"aterm")> path
-
+      
+  generate-java:
+    (selected, position, ast, path, project-path) -> result
+    with
+      scope-paths( 
+        result := <topdown(strip-annos) ; to-java(|<base-filename> path)> ast 
+        | path, project-path)
+      
   editor-hover:
     (QuotePart(_), position, ast, _, _) -> hover
     where
@@ -136,3 +144,4 @@ strategies
   
   external get-desugared-ast(|ast)
 
+  external sugar-log(|msg)

@@ -13,3 +13,5 @@ builders
   builder  : "Show abstract syntax (for selection)"          = generate-aterm (openeditor) (realtime) (source) // (meta) 
   builder  : "Run testsuite (current file)" = test-runner-file
   builder  : "Run testsuites" = test-runner
+  
+  builder  : "Generate JUnit test" = generate-java (openeditor) (realtime) (source)

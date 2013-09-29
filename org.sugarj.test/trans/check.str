@@ -16,25 +16,14 @@ signature constructors
   
 rules
   
-
   check-error:
-    Test(_, d, _, c*) -> (d, "Combination of test conditions is not supported")
-    where
-      // Base case: can never have > 1 condition
-      <gt> (<length> c*, 1)
-
-  check-error:
-    TestEmpty(_, d) -> (<id>, "Empty test case")
+    TestDeclEmpty(_, d) -> (<id>, "Empty test case")
   
   check-error:
-    MarkedPlaceholder(_, _, _) -> (<id>, ${Placeholders of the form [[...]] are not yet supported; 
-                                           place a 'footer' setup block at the end of the file instead})
-  
-  check-error:
-    Test(_,description(d), i, expectations) -> (d, warnings)
+    TestDecl(_,description(d), Test(i, expectation)) -> (d, warnings)
     where
       (input, selections) := <Test-get-input <+ !(FailsParsing(), [])> i
-    ; if not(<?[_ | _]; all(is-parse-only-test)> expectations) then
+    ; if not(<is-parse-only-test> expectation) then
         // TODO: set starting directory to project path using invoke-plugin-strategy
         plugin-strategy-invoke(|<Language>, "editor-init")
       ; input'     := (input, <InputFile>, <project-path>)
@@ -44,11 +33,7 @@ rules
       else
         messages'' := ([], [], [])
       end
-    ; if !expectations => [] then
-        warnings := <filter(check-expectation(|input, selections, messages''))> [SuccessParsing()]
-      else
-        warnings := <filter(check-expectation(|input, selections, messages''))> expectations
-      end
+    ; warnings := <check-expectation(|input, selections, messages'')> expectation
     ; where(sugt-index-clear-file)
     ; not([]) 
    
@@ -64,7 +49,7 @@ rules
   
    
   Test-get-input :
-    Input(_,_,_,_){a*} -> (parsed', selections)
+    Input(_,_,_){a*} -> (parsed', selections)
     where
       !a* => [parsed | selections];
       if !parsed => Error(_) then
@@ -110,10 +95,10 @@ rules
     ]
     where
       <oncetd(?amb(_))> ast;
-      not(!c => pattern(_); oncetd(?unquoted("amb")))
+      not(!c => ParsePattern(_); oncetd(?unquoted("amb")))
 
   check-expectation(|ast, selections, messages) :
-    pattern(p) -> $[Does not match pattern: 
+    ParsePattern(p) -> $[Does not match ParsePattern: 
       [<sugt-format-ast> ast]
     ]
     where
@@ -121,7 +106,7 @@ rules
     ; not(<aterm-eq> (exploded, p))
 
   check-expectation(|ast, selections, messages) :
-    containspattern(p) -> $[Does not contain pattern: 
+    ParseContainsPattern(p) -> $[Does not contain ParsePattern: 
       [<sugt-format-ast> ast]
     ]
     where
@@ -129,7 +114,7 @@ rules
     ; not(<aterm-contains(|p)> exploded)
 
   check-expectation(|ast, selections, messages) :
-    desugarcontainspattern(p) -> $[Does not contain pattern: 
+    DesugarContainsPattern(p) -> $[Does not contain ParsePattern: 
       [<get-desugared-ast(|<id>) ; sugt-format-ast> ast]
     ]
     where
@@ -148,7 +133,7 @@ rules
       result := $[[<write-to-html-string> ast] instead of [<write-to-html-string> ast]]
 
   check-expectation(|ast, selections, messages) :
-    ParseDesugar(_{^[output | _]}) -> $[Does not match expected: 
+    DesugarOutput(_{^[output | _]}) -> $[Does not match expected: 
       [result]
     ]
     where
@@ -166,7 +151,7 @@ rules
       <is-substring(!r)> message'
   
   is-parse-only-test =
-    SuccessParsing + FailsParsing + ?pattern(_) + ?ParseOutput(_)
+    SuccessParsing + FailsParsing + ?ParsePattern(_) + ?ParseOutput(_)
 
   grab-messages:
     (errors, warnings, notes) -> <write-to-html-string> // TODO: make nice string?
